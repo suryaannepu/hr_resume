@@ -1,0 +1,13 @@
+Flask
+Flask-CORS
+pymongo
+PyJWT
+bcrypt
+crewai
+langchain
+langchain-groq
+sentence-transformers
+torch
+PyMuPDF
+python-dotenv
+requests

@@ -1,0 +1,178 @@
+# Python Virtual Environments
+myvenv/
+venv/
+env/
+ENV/
+.venv
+.env.local
+.env*.local
+
+# Environment variables
+.env
+.env.development
+.env.production
+.env.test
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Node (if using any Node build tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# IDE temporary files
+*.tmp
+
+# Flask
+instance/
+.webassets-cache
+
+# Database backups
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Credentials and secrets
+.credentials
+secrets/
+credentials.json
+
+# MacOS
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+$RECYCLE.BIN/
+ehthumbs.db
+
+# Docker (if using containers)
+.dockerignore
+docker-compose.override.yml
+
+# Package manager lock files (optional - uncomment if needed)
+# poetry.lock
+# Pipfile.lock
+
+# Generated files
+dist/
+*.egg-info/
+.eggs/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Cache files
+.cache/
+*.cache
+
+# Compiled files
+*.so
+*.egg
+*.pyc
+
+# MongoDB local data
+data/
+mongodb_data/
+
+# Any local configuration overrides
+local_config.py
+settings_local.py
+
+# IDE settings (workspace specific)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Environment-specific files
+.env.*.local
+.env.*.example
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Keep this note
+# Add any project-specific entries below:
+# 
+# Example:
+# uploads/
+# temp_files/
+# sensitive_data/
