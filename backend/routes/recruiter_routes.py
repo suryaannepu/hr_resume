@@ -76,18 +76,42 @@ def get_ranked_candidates(payload, job_id):
     if job['recruiter_id'] != payload['user_id']:
         return jsonify({"error": "Unauthorized"}), 403
     
-    # Get applications sorted by match score
+    # Get all applications (processed + processing), rank processed by match score
     applications = ApplicationModel.get_job_applications(job_id)
     processed_apps = [app for app in applications if app.get('status') == 'processed']
+    pending_apps = [app for app in applications if app.get('status') != 'processed']
+
     processed_apps.sort(key=lambda x: x.get('match_score', 0), reverse=True)
-    
-    # Add ranking
+
     ranked = []
     for idx, app in enumerate(processed_apps):
         app['rank'] = idx + 1
         ranked.append(app)
-    
+
+    # Append pending at the end (no rank yet)
+    for app in pending_apps:
+        app['rank'] = None
+        ranked.append(app)
+
     return jsonify({"candidates": ranked}), 200
+
+
+@recruiter_bp.route('/job/<job_id>/candidate/<application_id>', methods=['GET'])
+@require_auth
+def get_candidate_detail(payload, job_id, application_id):
+    """Get full candidate application detail for recruiter (including agent outputs)."""
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    app = ApplicationModel.get_application(application_id)
+    if not app or app.get("job_id") != job_id:
+        return jsonify({"error": "Application not found"}), 404
+
+    return jsonify({"application": app}), 200
 
 @recruiter_bp.route('/job/<job_id>/recommendations', methods=['GET'])
 @require_auth

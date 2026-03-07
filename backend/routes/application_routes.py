@@ -5,6 +5,12 @@ from models.db_models import ApplicationModel, JobModel
 from utils.resume_parser import extract_text_from_base64
 import base64
 import os
+from datetime import datetime
+
+from database import get_applications_collection
+from bson.objectid import ObjectId
+
+from tasks.background import submit_task
 
 # Agents pipeline - optional import
 try:
@@ -60,36 +66,52 @@ def apply_to_job(payload):
         resume_text=resume_text,
         resume_filename=data['resume_filename']
     )
-    
-    # Trigger AI pipeline processing (if available)
-    try:
-        if PIPELINE_AVAILABLE and run_application_pipeline:
-            result = run_application_pipeline(
-                application_id,
-                data['job_id'],
-                resume_text,
-                job['description']
-            )
-            return jsonify({
-                "success": True,
-                "application_id": application_id,
-                "message": "Application submitted and processed",
-                "processing_result": result
-            }), 201
-        else:
-            # Pipeline not available, return without processing
-            return jsonify({
-                "success": True,
-                "application_id": application_id,
-                "message": "Application submitted successfully (processing disabled)"
-            }), 201
-    except Exception as e:
+
+    # Mark processing + kick off async pipeline
+    apps = get_applications_collection()
+    apps.update_one(
+        {"_id": ObjectId(application_id)},
+        {"$set": {
+            "status": "processing",
+            "processing_step": "queued",
+            "processing_started_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }}
+    )
+
+    if PIPELINE_AVAILABLE and run_application_pipeline:
+        # Run in background so uploads return immediately
+        submit_task(
+            run_application_pipeline,
+            application_id,
+            data['job_id'],
+            resume_text,
+            job['description']
+        )
+
+        # Return immediately; UI can poll /status
         return jsonify({
-            "success": False,
+            "success": True,
             "application_id": application_id,
-            "error": str(e),
-            "message": "Application submitted but processing failed"
+            "status": "processing",
+            "message": "Application submitted. AI agents are processing your resume now."
         }), 201
+
+    # Pipeline not available, return without processing (keep as uploaded)
+    apps.update_one(
+        {"_id": ObjectId(application_id)},
+        {"$set": {
+            "status": "uploaded",
+            "processing_step": "disabled",
+            "updated_at": datetime.utcnow(),
+        }}
+    )
+    return jsonify({
+        "success": True,
+        "application_id": application_id,
+        "status": "uploaded",
+        "message": "Application submitted successfully (AI processing disabled on server)."
+    }), 201
 
 @applications_bp.route('/status/<application_id>', methods=['GET'])
 @require_auth

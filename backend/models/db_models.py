@@ -73,6 +73,19 @@ class JobModel:
 
 class ApplicationModel:
     @staticmethod
+    def _sanitize_application_for_list(app: dict) -> dict:
+        """Remove very large fields from application docs for list endpoints."""
+        if not app:
+            return app
+        # Resume text can be very large
+        if "resume_text" in app:
+            app.pop("resume_text", None)
+        # Full agent outputs can be very large; detail endpoint can fetch these when needed
+        if "agent_outputs" in app:
+            app.pop("agent_outputs", None)
+        return app
+
+    @staticmethod
     def create_application(job_id, candidate_id, candidate_email, resume_text, resume_filename):
         """Create new application with skill extraction"""
         from utils.skill_extractor import extract_skills_from_text, match_resume_to_job
@@ -99,7 +112,9 @@ class ApplicationModel:
             "resume_text": resume_text,
             "resume_filename": resume_filename,
             "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
             "status": "uploaded",
+            "processing_step": "uploaded",
             "match_score": match_data['match_score'],
             "match_percentage": match_data['match_percentage'],
             "extracted_skills": resume_skills['all'],
@@ -134,6 +149,7 @@ class ApplicationModel:
             app["_id"] = str(app["_id"])
             app["job_id"] = str(app["job_id"])
             app["candidate_id"] = str(app["candidate_id"])
+            ApplicationModel._sanitize_application_for_list(app)
         return applications
     
     @staticmethod
@@ -145,6 +161,7 @@ class ApplicationModel:
             app["_id"] = str(app["_id"])
             app["job_id"] = str(app["job_id"])
             app["candidate_id"] = str(app["candidate_id"])
+            ApplicationModel._sanitize_application_for_list(app)
         return applications
 
 class ShortlistModel:
