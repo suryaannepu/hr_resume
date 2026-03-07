@@ -1,8 +1,10 @@
-#!/usr/bin/env python
+import os
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
+from dotenv import load_dotenv
 
-MONGODB_URI = "mongodb+srv://suryaannepu922_db_user:kDYN6EHTTypBena4@cluster0.ldyv5ju.mongodb.net/?appName=Cluster0"
+load_dotenv()
+MONGODB_URI = os.getenv("MONGODB_URI")
 
 try:
     client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
