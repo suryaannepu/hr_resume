@@ -1,30 +1,51 @@
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import os
+import certifi
 from config import MONGODB_URI, DATABASE_NAME
+import time
 
 client = None
 db = None
+MAX_RETRIES = 3
+RETRY_DELAY = 2
 
-def connect_db():
-    """Connect to MongoDB"""
+def connect_db(retry_count=0, is_startup=False):
+    """Connect to MongoDB with retry logic (non-blocking)"""
     global client, db
     if db is not None:
         # Already connected
         return db
     
+    max_retries = 1 if is_startup else MAX_RETRIES  # Limit initial startup attempts
+    
     try:
-        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-        # Verify connection
-        client.admin.command('ping')
+        print(f"🔄 Attempting to connect to MongoDB...")
+        
+        # Try absolute minimal config first
+        # Let the connection string handle everything
+        client = MongoClient(MONGODB_URI)
+        
+        print("🔄 Pinging MongoDB...")
+        client.admin.command('ping', timeoutMS=20000)
         db = client[DATABASE_NAME]
-        print("✓ Connected to MongoDB")
+        print("✓ Connected to MongoDB successfully")
         return db
-    except ConnectionFailure as e:
-        print(f"✗ Failed to connect to MongoDB: {e}")
-        return None
+    except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+        if retry_count < max_retries:
+            retry_count += 1
+            if not is_startup:
+                print(f"⚠️  MongoDB connection failed, retrying... (Attempt {retry_count}/{max_retries})")
+                time.sleep(RETRY_DELAY)
+            return connect_db(retry_count, is_startup)
+        else:
+            if not is_startup or retry_count > 0:
+                print(f"⚠️  MongoDB unavailable: {type(e).__name__}. App will continue, but API calls may fail.")
+            db = None
+            return None
     except Exception as e:
-        print(f"✗ Database error: {e}")
+        if not is_startup:
+            print(f"⚠️  Database error: {e}")
         return None
 
 def get_db():

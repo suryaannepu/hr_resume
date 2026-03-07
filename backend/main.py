@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from database import connect_db, close_db, get_db
 from config import ALLOWED_ORIGINS, PORT, DEBUG
@@ -22,19 +22,22 @@ CORS(app, resources={
     }
 })
 
-# Initialize database connection at startup
+# Initialize database connection at startup (non-blocking)
 with app.app_context():
-    connect_db()
+    connect_db(is_startup=True)  # Don't block startup if MongoDB is unavailable
 
-# Database setup - ensure connection is active
+# Database setup - attempt connection before processing requests
 @app.before_request
 def before_request():
     """Ensure database connection is available before processing requests"""
     db = get_db()
     if db is None:
-        # Try to reconnect
-        if connect_db() is None:
-            return jsonify({"error": "Database connection unavailable"}), 503
+        # Try once more to reconnect
+        db = connect_db()
+        if db is None:
+            # Only return 503 for API endpoints, not health checks
+            if not request.path.startswith('/api/health'):
+                return jsonify({"error": "Database temporarily unavailable. Please try again."}), 503
 
 @app.teardown_appcontext
 def teardown(error):

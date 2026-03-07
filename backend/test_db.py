@@ -4,7 +4,7 @@ from pymongo.errors import ConnectionFailure
 from dotenv import load_dotenv
 
 load_dotenv()
-MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_URI = ""
 
 try:
     client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)

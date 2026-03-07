@@ -9,3 +9,4 @@ langchain-groq
 PyMuPDF
 python-dotenv
 requests
+certifi

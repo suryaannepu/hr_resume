@@ -13,10 +13,24 @@ export const JobCandidates = () => {
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     fetchCandidates();
   }, [jobId]);
+
+  useEffect(() => {
+    const hasPending = candidates.some(c => c.status && c.status !== 'processed' && c.status !== 'failed');
+    if (!hasPending) return;
+
+    const id = setInterval(() => {
+      fetchCandidates();
+    }, 4000);
+
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates]);
 
   const fetchCandidates = async () => {
     try {
@@ -47,6 +61,20 @@ export const JobCandidates = () => {
       setShowModal(false);
     } catch (err) {
       setError('Failed to approve shortlist');
+    }
+  };
+
+  const openCandidateDetail = async (applicationId) => {
+    try {
+      setDetailLoading(true);
+      setDetailModalOpen(true);
+      const res = await apiClient.get(`/recruiter/job/${jobId}/candidate/${applicationId}`);
+      setSelectedCandidate(res.data.application);
+    } catch (e) {
+      setError('Failed to load candidate details');
+      setDetailModalOpen(false);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -81,18 +109,21 @@ export const JobCandidates = () => {
                       checked={selectedCandidates.includes(candidate._id)}
                       onChange={() => handleSelectCandidate(candidate._id)}
                       className="candidate-checkbox"
+                      disabled={candidate.status !== 'processed'}
                     />
                     <div>
-                      <h3>{candidate.candidate_name}</h3>
+                      <h3>{candidate.candidate_name || 'Candidate'}</h3>
                       <p>{candidate.candidate_email}</p>
                     </div>
                   </div>
                   <Badge variant={
+                    candidate.status !== 'processed' ? 'primary' :
                     candidate.match_score >= 70 ? 'success' :
-                    candidate.match_score >= 50 ? 'warning' :
-                    'danger'
+                    candidate.match_score >= 50 ? 'warning' : 'danger'
                   }>
-                    Rank #{candidate.rank}
+                    {candidate.status !== 'processed'
+                      ? (candidate.status ? candidate.status.toUpperCase() : 'PENDING')
+                      : `Rank #${candidate.rank}`}
                   </Badge>
                 </div>
 
@@ -152,8 +183,17 @@ export const JobCandidates = () => {
                       candidate.recommendation === 'Fair Fit' ? 'warning' :
                       'danger'
                     }>
-                      {candidate.recommendation}
+                      {candidate.recommendation || 'Pending'}
                     </Badge>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => openCandidateDetail(candidate._id)}
+                    >
+                      View AI Report
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -176,6 +216,67 @@ export const JobCandidates = () => {
           <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
           <Button variant="success" onClick={handleApproveShortlist}>Confirm Shortlist</Button>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={detailModalOpen}
+        title="Candidate AI Report"
+        onClose={() => setDetailModalOpen(false)}
+      >
+        {detailLoading ? (
+          <Loading />
+        ) : selectedCandidate ? (
+          <div className="ai-report">
+            {selectedCandidate.committee_packet?.summary_for_recruiter && (
+              <div className="result-section">
+                <label>Committee Summary</label>
+                <p style={{ whiteSpace: 'pre-wrap' }}>{selectedCandidate.committee_packet.summary_for_recruiter}</p>
+              </div>
+            )}
+
+            <div className="result-row">
+              <div className="result-col">
+                <label>Final Recommendation</label>
+                <p><strong>{selectedCandidate.recommendation || '—'}</strong></p>
+              </div>
+              <div className="result-col">
+                <label>Risk Level</label>
+                <p><strong>{selectedCandidate.risk_level || 'Low'}</strong></p>
+              </div>
+            </div>
+
+            {selectedCandidate.verification_questions?.length > 0 && (
+              <div className="result-section">
+                <label>Verification Questions</label>
+                <ul className="bullet-list">
+                  {selectedCandidate.verification_questions.map((q, i) => <li key={i}>{q}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {selectedCandidate.interview_plan?.interview_questions?.length > 0 && (
+              <div className="result-section">
+                <label>Interview Plan</label>
+                <div className="interview-questions">
+                  {selectedCandidate.interview_plan.interview_questions.map((q, i) => (
+                    <div key={i} className="interview-q">
+                      <div className="interview-q-head">
+                        <Badge variant="primary">{q.round || 'Round'}</Badge>
+                        <Badge variant="default">{q.type || 'Question'}</Badge>
+                      </div>
+                      <p style={{ marginTop: '0.5rem' }}><strong>{q.question}</strong></p>
+                      {q.what_good_looks_like && (
+                        <p style={{ marginTop: '0.25rem' }}>{q.what_good_looks_like}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Alert type="warning" message="No report available yet." />
+        )}
       </Modal>
     </>
   );

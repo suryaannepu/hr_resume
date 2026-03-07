@@ -214,3 +214,92 @@ def get_shortlist(payload, job_id):
             enriched.append(entry)
     
     return jsonify({"shortlist": enriched}), 200
+
+
+@recruiter_bp.route('/job/<job_id>/process-pending', methods=['POST'])
+@require_auth
+def process_pending_applications(payload, job_id):
+    """Automatically process all pending applications for a job"""
+    from agents.pipeline import run_application_pipeline
+    from tasks.background import submit_task
+    
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    
+    # Verify ownership
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    # Get pending applications
+    applications = ApplicationModel.get_job_applications(job_id)
+    pending = [app for app in applications if app.get('status') != 'processed']
+    
+    # Submit each for processing
+    submitted_ids = []
+    for app in pending:
+        future = submit_task(
+            run_application_pipeline,
+            str(app['_id']),
+            job_id,
+            app.get('resume_text', ''),
+            job.get('job_description', '')
+        )
+        submitted_ids.append(str(app['_id']))
+    
+    return jsonify({
+        "success": True,
+        "message": f"Processing {len(submitted_ids)} pending applications",
+        "submitted_count": len(submitted_ids),
+        "application_ids": submitted_ids
+    }), 200
+
+
+@recruiter_bp.route('/job/<job_id>/auto-shortlist', methods=['POST'])
+@require_auth
+def auto_shortlist(payload, job_id):
+    """Automatically shortlist top candidates based on AI scoring"""
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    
+    # Verify ownership
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.get_json() or {}
+    threshold = data.get('threshold', 70)  # Default 70% match score
+    
+    # Get all processed applications
+    applications = ApplicationModel.get_job_applications(job_id)
+    processed = [app for app in applications if app.get('status') == 'processed']
+    
+    # Filter by threshold
+    quality_candidates = [
+        app for app in processed 
+        if app.get('match_score', 0) >= threshold
+    ]
+    
+    # Auto-shortlist
+    shortlisted_ids = []
+    for idx, app in enumerate(sorted(quality_candidates, key=lambda x: x.get('match_score', 0), reverse=True)):
+        # Create shortlist entry
+        existing = ShortlistModel.get_job_shortlist(job_id)
+        if not any(s['application_id'] == app['_id'] for s in existing):
+            ShortlistModel.create_shortlist_entry(
+                job_id=job_id,
+                candidate_id=app['candidate_id'],
+                application_id=str(app['_id']),
+                score=app.get('match_score', 0),
+                rank=len(existing) + 1
+            )
+            shortlisted_ids.append(str(app['_id']))
+    
+    return jsonify({
+        "success": True,
+        "message": f"Auto-shortlisted {len(shortlisted_ids)} candidates",
+        "shortlisted_count": len(shortlisted_ids),
+        "threshold": threshold,
+        "total_candidates": len(processed),
+        "qualified_candidates": len(quality_candidates)
+    }), 200
