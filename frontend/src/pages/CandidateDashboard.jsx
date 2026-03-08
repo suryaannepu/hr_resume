@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../utils/api';
 import { Navigation } from '../components/Navigation';
-import { 
-  Badge, 
-  ScoreRing, 
-  ScoreBar, 
-  Loading, 
-  Alert, 
-  Modal, 
-  AgentCard, 
-  AgentPipelineVisualizer, 
-  SkillBadge, 
+import {
+  Badge,
+  ScoreRing,
+  ScoreBar,
+  Loading,
+  Alert,
+  Modal,
+  AgentCard,
+  AgentPipelineVisualizer,
+  SkillBadge,
   Tabs,
   SectionHeader,
   StatWidget,
@@ -18,16 +18,17 @@ import {
   InfoBox,
   Timeline,
   Button,
-  Card
+  Card,
+  Skeleton
 } from '../components/Common';
-import { 
-  FileText, 
-  TrendingUp, 
-  Lightbulb, 
-  GraduationCap, 
-  Mic2, 
-  Shield, 
-  Scale, 
+import {
+  FileText,
+  TrendingUp,
+  Lightbulb,
+  GraduationCap,
+  Mic2,
+  Shield,
+  Scale,
   Target,
   Sparkles,
   CheckCircle,
@@ -49,8 +50,9 @@ import {
 } from 'lucide-react';
 
 // AI Coach Chat Component
-const AICoachChat = ({ coaching, onAction }) => {
+const AICoachChat = ({ coaching, application }) => {
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const [chatHistory, setChatHistory] = useState([
     { type: 'ai', content: coaching?.short_message || 'Hi! I am your AI Career Coach. How can I help you improve your candidacy today?' }
   ]);
@@ -62,16 +64,25 @@ const AICoachChat = ({ coaching, onAction }) => {
     'Interview tips please'
   ];
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    setChatHistory([...chatHistory, { type: 'user', content: message }]);
-    setTimeout(() => {
-      setChatHistory(prev => [...prev, { 
-        type: 'ai', 
-        content: 'I am analyzing your profile. Based on your resume and the job requirements, I recommend focusing on the skill improvement suggestions I have provided below. Would you like specific guidance on any particular area?' 
-      }]);
-    }, 1000);
+  const handleSend = async (textToSend = message) => {
+    if (!textToSend.trim() || sending) return;
+
+    const newHistory = [...chatHistory, { type: 'user', content: textToSend }];
+    setChatHistory(newHistory);
     setMessage('');
+    setSending(true);
+
+    try {
+      const res = await apiClient.post(`/applications/chat/${application._id}`, {
+        message: textToSend,
+        history: chatHistory.slice(-6)
+      });
+      setChatHistory(prev => [...prev, { type: 'ai', content: res.data.reply }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { type: 'ai', content: "I'm sorry, I'm having trouble connecting to my knowledge base right now. Please try again later." }]);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -79,16 +90,14 @@ const AICoachChat = ({ coaching, onAction }) => {
       <div className="bg-slate-50 rounded-xl p-4 h-48 overflow-y-auto space-y-3">
         {chatHistory.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-              msg.type === 'ai' ? 'bg-violet-100 text-violet-600' : 'bg-blue-100 text-blue-600'
-            }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.type === 'ai' ? 'bg-violet-100 text-violet-600' : 'bg-blue-100 text-blue-600'
+              }`}>
               {msg.type === 'ai' ? <GraduationCap size={16} /> : <Users size={16} />}
             </div>
-            <div className={`max-w-[80%] p-3 rounded-xl text-sm ${
-              msg.type === 'ai' 
-                ? 'bg-white border border-slate-200 text-slate-700' 
-                : 'bg-blue-600 text-white'
-            }`}>
+            <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.type === 'ai'
+              ? 'bg-white border border-slate-200 text-slate-700'
+              : 'bg-blue-600 text-white'
+              }`}>
               {msg.content}
             </div>
           </div>
@@ -99,8 +108,9 @@ const AICoachChat = ({ coaching, onAction }) => {
         {suggestions.map((suggestion, i) => (
           <button
             key={i}
-            onClick={() => setMessage(suggestion)}
-            className="px-3 py-1.5 text-xs bg-violet-50 text-violet-700 rounded-full border border-violet-200 hover:bg-violet-100 transition-colors"
+            disabled={sending}
+            onClick={() => handleSend(suggestion)}
+            className="px-3 py-1.5 text-xs bg-violet-50 text-violet-700 rounded-full border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
           >
             {suggestion}
           </button>
@@ -113,10 +123,13 @@ const AICoachChat = ({ coaching, onAction }) => {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ask your AI Coach..."
-          className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500"
+          placeholder={sending ? "Coach is typing..." : "Ask your AI Coach..."}
+          disabled={sending}
+          className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 disabled:bg-slate-50"
         />
-        <Button size="sm" onClick={handleSend} icon={Sparkles}>Ask</Button>
+        <Button size="sm" onClick={() => handleSend()} disabled={sending} icon={sending ? null : Sparkles}>
+          {sending ? "..." : "Ask"}
+        </Button>
       </div>
 
       {coaching?.resume_improvements?.length > 0 && (
@@ -331,21 +344,19 @@ const CareerInsights = ({ application }) => {
         </div>
       )}
 
-      <div className={`p-4 rounded-xl border ${
-        application.recommendation?.includes('Strong') 
-          ? 'bg-emerald-50 border-emerald-200' 
-          : application.recommendation?.includes('Good')
+      <div className={`p-4 rounded-xl border ${application.recommendation?.includes('Strong')
+        ? 'bg-emerald-50 border-emerald-200'
+        : application.recommendation?.includes('Good')
           ? 'bg-blue-50 border-blue-200'
           : 'bg-amber-50 border-amber-200'
-      }`}>
+        }`}>
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            application.recommendation?.includes('Strong')
-              ? 'bg-emerald-100 text-emerald-600'
-              : application.recommendation?.includes('Good')
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${application.recommendation?.includes('Strong')
+            ? 'bg-emerald-100 text-emerald-600'
+            : application.recommendation?.includes('Good')
               ? 'bg-blue-100 text-blue-600'
               : 'bg-amber-100 text-amber-600'
-          }`}>
+            }`}>
             <Award size={20} />
           </div>
           <div>
@@ -403,7 +414,7 @@ const RiskAssessment = ({ application }) => {
       )}
 
       <InfoBox type="info">
-        The Risk Agent analyzes your profile for potential concerns like gaps in employment, 
+        The Risk Agent analyzes your profile for potential concerns like gaps in employment,
         vague job descriptions, or missing qualifications. Addressing these areas can improve your candidacy.
       </InfoBox>
     </div>
@@ -466,10 +477,10 @@ const CommitteeDecision = ({ committeePacket }) => {
       )}
 
       <div className="flex items-center justify-center gap-8">
-        <ScoreRing 
-          score={committeePacket.final_match_score || 0} 
-          size={80} 
-          label="Final Match" 
+        <ScoreRing
+          score={committeePacket.final_match_score || 0}
+          size={80}
+          label="Final Match"
         />
         <div className="text-center">
           <p className="text-xs text-slate-500 uppercase tracking-wider">Confidence</p>
@@ -503,10 +514,10 @@ export const CandidateDashboard = () => {
     try {
       const res = await apiClient.get('/applications/candidate/all');
       setApplications(res.data.applications);
-    } catch (err) { 
-      setError('Failed to load applications'); 
-    } finally { 
-      setLoading(false); 
+    } catch (err) {
+      setError('Failed to load applications');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -517,14 +528,57 @@ export const CandidateDashboard = () => {
     try {
       const res = await apiClient.get(`/applications/status/${app._id}`);
       setDetailApp(res.data);
-    } catch { 
-      setDetailApp(app); 
-    } finally { 
-      setDetailLoading(false); 
+    } catch {
+      setDetailApp(app);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
-  if (loading) return <><Navigation userRole="candidate" /><Loading text="Loading your applications..." fullScreen /></>;
+  if (loading) {
+    return (
+      <>
+        <Navigation userRole="candidate" />
+        <div className="min-h-screen bg-slate-50 py-8 px-4">
+          <div className="max-w-7xl mx-auto space-y-8 animate-fade-in-up">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <Skeleton className="h-8 w-64 mb-2" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="dashboard-widget">
+                  <Skeleton className="h-12 w-12 rounded-xl mb-4" />
+                  <Skeleton className="h-8 w-24 mb-2" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              {[1, 2, 3].map(i => (
+                <Card key={i} className="h-40 flex items-center gap-6">
+                  <Skeleton className="w-12 h-12 rounded-xl flex-shrink-0" />
+                  <div className="flex-1">
+                    <Skeleton className="h-6 w-48 mb-2" />
+                    <Skeleton className="h-4 w-32 mb-4" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </div>
+                  </div>
+                  <Skeleton className="w-20 h-20 rounded-full" circle />
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const processed = applications.filter(a => a.status === 'processed');
   const avgScore = processed.length ? Math.round(processed.reduce((s, a) => s + (a.match_score || 0), 0) / processed.length) : 0;
@@ -590,7 +644,7 @@ export const CandidateDashboard = () => {
               {applications.map(app => {
                 const status = statusConfig[app.status] || statusConfig.uploaded;
                 const StatusIcon = status.icon;
-                
+
                 return (
                   <Card key={app._id} className="relative overflow-hidden">
                     {(app.status === 'hired') && (
@@ -600,7 +654,7 @@ export const CandidateDashboard = () => {
                         </span>
                       </div>
                     )}
-                    
+
                     <div className={`${app.status === 'hired' ? 'pt-12' : ''}`}>
                       <div className="flex flex-col lg:flex-row lg:items-start gap-6">
                         <div className="flex-1">
@@ -626,10 +680,10 @@ export const CandidateDashboard = () => {
                                 )}
                               </div>
                               <p className="text-sm text-slate-500 mt-2">
-                                Applied {new Date(app.created_at).toLocaleDateString('en-US', { 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric' 
+                                Applied {new Date(app.created_at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
                                 })}
                               </p>
                             </div>
@@ -665,7 +719,7 @@ export const CandidateDashboard = () => {
                               </Badge>
                             </>
                           )}
-                          
+
                           {app.status === 'processing' && (
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
@@ -673,9 +727,9 @@ export const CandidateDashboard = () => {
                             </div>
                           )}
 
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => openDetail(app)}
                             icon={app.status === 'processed' ? BrainCircuit : FileText}
                           >
@@ -696,7 +750,7 @@ export const CandidateDashboard = () => {
                                 <p className="text-sm text-slate-500">Take your interview anytime - it is AI-powered and available 24/7</p>
                               </div>
                             </div>
-                            <Button 
+                            <Button
                               onClick={() => window.location.href = `/interview/${app._id}`}
                               icon={Rocket}
                             >
@@ -720,10 +774,10 @@ export const CandidateDashboard = () => {
         </div>
       </div>
 
-      <Modal 
-        isOpen={showDetailModal} 
-        title="AI Analysis Dashboard" 
-        onClose={() => setShowDetailModal(false)} 
+      <Modal
+        isOpen={showDetailModal}
+        title="AI Analysis Dashboard"
+        onClose={() => setShowDetailModal(false)}
         size="xl"
         icon={BrainCircuit}
       >
@@ -817,9 +871,9 @@ export const CandidateDashboard = () => {
 
               {activeTab === 'coach' && (
                 <AgentCard icon={GraduationCap} title="AI Career Coach" accentColor="purple">
-                  <AICoachChat 
-                    coaching={detailApp.candidate_coaching} 
-                    onAction={(action) => console.log(action)} 
+                  <AICoachChat
+                    coaching={detailApp.candidate_coaching}
+                    application={detailApp}
                   />
                 </AgentCard>
               )}

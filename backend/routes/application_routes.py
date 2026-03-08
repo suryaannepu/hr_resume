@@ -12,6 +12,11 @@ from bson.objectid import ObjectId
 
 from tasks.background import submit_task
 
+try:
+    from agents.chat_agent import run_coach_chat
+except ImportError:
+    run_coach_chat = None
+
 # Agents pipeline - optional import
 try:
     from agents.pipeline import run_application_pipeline
@@ -164,3 +169,52 @@ def get_job_applications(payload, job_id):
     
     applications = ApplicationModel.get_job_applications(job_id)
     return jsonify({"applications": applications}), 200
+
+@applications_bp.route('/chat/<application_id>', methods=['POST'])
+@require_auth
+def chat_with_coach(payload, application_id):
+    """Real-time chat with the AI Career Coach using resume context"""
+    if not run_coach_chat:
+        return jsonify({"error": "Chat agent not available"}), 503
+
+    app = ApplicationModel.get_application(application_id)
+    if not app:
+        return jsonify({"error": "Application not found"}), 404
+        
+    # Verify ownership
+    if app['candidate_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    job = JobModel.get_job(app.get('job_id'))
+    if not job:
+        return jsonify({"error": "Associated job not found"}), 404
+        
+    data = request.get_json()
+    message = data.get('message')
+    history = data.get('history', [])
+    
+    if not message:
+        return jsonify({"error": "Message is required"}), 400
+        
+    try:
+        candidate_info = {
+            "name": app.get("candidate_name"),
+            "skills": app.get("extracted_skills", []),
+            "experience_match": app.get("experience_match"),
+            "strengths": app.get("key_strengths", []),
+            "gaps": app.get("skill_gaps", []),
+            "coach_notes": app.get("candidate_coaching", {})
+        }
+        
+        response = run_coach_chat(
+            candidate_info=candidate_info,
+            job_description=job.get("description", "Unknown"),
+            message=message,
+            history=history
+        )
+        
+        return jsonify({"reply": response.get("reply", "I'm sorry, I couldn't formulate a response right now.")}), 200
+        
+    except Exception as e:
+        print(f"Error in coach chat: {e}")
+        return jsonify({"error": "Failed to generate response"}), 500

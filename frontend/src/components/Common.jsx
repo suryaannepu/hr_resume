@@ -113,6 +113,11 @@ export const Loading = ({ text = 'Loading...', fullScreen = false }) => (
   </div>
 );
 
+/* ────────────── Skeleton ────────────── */
+export const Skeleton = ({ className = '', circle = false }) => (
+  <div className={`skeleton-shimmer ${circle ? 'rounded-full' : 'rounded-lg'} ${className}`} />
+);
+
 /* ────────────── Alert ────────────── */
 export const Alert = ({ type = 'info', message, onClose, title }) => {
   const styles = {
