@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../context/authStore';
 import apiClient from '../utils/api';
+import { Zap, ArrowRight, Loader2, User, Briefcase } from 'lucide-react';
 
 export const Register = () => {
   const navigate = useNavigate();
@@ -33,74 +34,81 @@ export const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-slate-50 font-sans">
       {/* Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-900 via-brand-900 to-slate-925 flex-col items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute top-1/3 left-1/3 w-72 h-72 bg-purple-500/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 right-1/3 w-56 h-56 bg-brand-500/10 rounded-full blur-3xl" />
-        <div className="relative text-center">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-4xl mx-auto mb-8 shadow-2xl shadow-purple-500/30">⚡</div>
-          <h1 className="text-4xl font-extrabold text-white mb-4">Join the Future</h1>
-          <p className="text-lg text-purple-200/80 max-w-md">Create your account and experience AI-powered hiring like never before.</p>
+      <div className="hidden lg:flex lg:w-1/2 bg-indigo-600 flex-col items-center justify-center p-12 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-50 translate-x-1/3 -translate-y-1/3" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-700 rounded-full blur-3xl opacity-50 -translate-x-1/3 translate-y-1/3" />
+        <div className="relative text-center z-10">
+          <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center mx-auto mb-8 shadow-xl shadow-indigo-900/20">
+            <Zap className="w-10 h-10 text-indigo-600" />
+          </div>
+          <h1 className="text-4xl font-extrabold text-white mb-4 tracking-tight">Join the Future</h1>
+          <p className="text-lg text-indigo-100 max-w-md font-medium">Create your account and experience AI-powered hiring like never before.</p>
         </div>
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-slate-925">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center p-6 bg-white lg:bg-slate-50 overflow-y-auto">
+        <div className="w-full max-w-md py-8">
           <div className="lg:hidden text-center mb-8">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg">⚡</div>
+            <div className="w-14 h-14 rounded-xl bg-indigo-100 flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <Zap className="w-7 h-7 text-indigo-600" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Agentic AI Hiring</h1>
           </div>
 
-          <div className="glass-card-static">
-            <h2 className="text-2xl font-bold text-white mb-2">Create Account</h2>
-            <p className="text-slate-400 mb-6">Get started in less than a minute</p>
+          <div className="bg-white lg:border lg:border-slate-200 lg:rounded-3xl lg:p-10 lg:shadow-sm">
+            <h2 className="text-2xl font-extrabold text-slate-900 mb-2 tracking-tight">Create Account</h2>
+            <p className="text-slate-600 mb-6 font-medium">Get started in less than a minute</p>
 
-            {error && <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 px-4 py-3 rounded-xl text-sm mb-4">{error}</div>}
+            {error && <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-4 shadow-sm">{error}</div>}
 
             {/* Role Selection */}
             <div className="grid grid-cols-2 gap-3 mb-6">
               {[
-                { value: 'candidate', icon: '👤', label: 'Candidate', subtitle: 'Find your dream job' },
-                { value: 'recruiter', icon: '💼', label: 'Recruiter', subtitle: 'Hire top talent' },
+                { value: 'candidate', icon: <User className="w-6 h-6 mb-2" />, label: 'Candidate', subtitle: 'Find your dream job' },
+                { value: 'recruiter', icon: <Briefcase className="w-6 h-6 mb-2" />, label: 'Recruiter', subtitle: 'Hire top talent' },
               ].map(r => (
                 <button key={r.value} type="button" onClick={() => update('role', r.value)}
                   className={`p-4 rounded-xl border-2 text-left transition-all duration-300
-                    ${form.role === r.value ? 'border-brand-500 bg-brand-500/10 shadow-lg shadow-brand-500/10' : 'border-white/10 hover:border-white/20 bg-white/5'}`}>
-                  <div className="text-2xl mb-2">{r.icon}</div>
-                  <div className="font-semibold text-white text-sm">{r.label}</div>
-                  <div className="text-xs text-slate-400">{r.subtitle}</div>
+                    ${form.role === r.value ? 'border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'}`}>
+                  <div className={form.role === r.value ? 'text-indigo-600' : 'text-slate-500'}>
+                    {r.icon}
+                  </div>
+                  <div className={`font-bold text-sm ${form.role === r.value ? 'text-indigo-900' : 'text-slate-700'}`}>{r.label}</div>
+                  <div className={`text-xs font-medium mt-1 ${form.role === r.value ? 'text-indigo-600' : 'text-slate-500'}`}>{r.subtitle}</div>
                 </button>
               ))}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
-                <input className="input-field" placeholder="John Doe" value={form.name} onChange={e => update('name', e.target.value)} required />
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Full Name</label>
+                <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="John Doe" value={form.name} onChange={e => update('name', e.target.value)} required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-                <input type="email" className="input-field" placeholder="you@example.com" value={form.email} onChange={e => update('email', e.target.value)} required />
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Email</label>
+                <input type="email" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="you@example.com" value={form.email} onChange={e => update('email', e.target.value)} required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-                <input type="password" className="input-field" placeholder="••••••••" value={form.password} onChange={e => update('password', e.target.value)} required minLength={6} />
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Password</label>
+                <input type="password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="••••••••" value={form.password} onChange={e => update('password', e.target.value)} required minLength={6} />
               </div>
               {form.role === 'recruiter' && (
-                <div className="animate-slide-up">
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Company Name</label>
-                  <input className="input-field" placeholder="Acme Inc." value={form.company_name} onChange={e => update('company_name', e.target.value)} />
+                <div className="animate-fade-in-up">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Company Name</label>
+                  <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="Acme Inc." value={form.company_name} onChange={e => update('company_name', e.target.value)} />
                 </div>
               )}
-              <button type="submit" disabled={loading || !form.role} className="btn-primary w-full text-center">
-                {loading ? '⏳ Creating...' : '🚀 Create Account'}
+              <button type="submit" disabled={loading || !form.role} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 mt-2">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Create Account <ArrowRight className="w-5 h-5" /></>}
               </button>
             </form>
 
-            <p className="text-center text-sm text-slate-500 mt-6">
+            <p className="text-center text-sm text-slate-600 font-medium mt-6">
               Already have an account?{' '}
-              <button onClick={() => navigate('/login')} className="text-brand-400 hover:text-brand-300 font-semibold transition-colors">Sign In →</button>
+              <button onClick={() => navigate('/login')} className="text-indigo-600 hover:text-indigo-700 font-bold transition-colors">Sign In &rarr;</button>
             </p>
           </div>
         </div>
