@@ -7,3 +7,5 @@ PyMuPDF
 python-dotenv
 requests
 certifi
+edge-tts
+pydub

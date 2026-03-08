@@ -28,53 +28,60 @@ const getStoredUser = () => {
   return null;
 };
 
-const useAuthStore = create((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  
-  // Initialize auth from localStorage (call this on app mount)
-  initializeAuth: () => {
-    const storedToken = getStoredToken();
-    const storedUser = getStoredUser();
-    if (storedToken && storedUser) {
-      set({ token: storedToken, user: storedUser, isAuthenticated: true });
-    }
-  },
-  
-  setToken: (token) => {
-    try {
-      if (window.localStorage) {
-        window.localStorage.setItem('token', token);
+const useAuthStore = create((set) => {
+  // Initialize synchronously from localStorage so auth is available on first render
+  const initialToken = getStoredToken();
+  const initialUser = getStoredUser();
+  const initiallyAuthenticated = !!(initialToken && initialUser);
+
+  return {
+    user: initialUser,
+    token: initialToken,
+    isAuthenticated: initiallyAuthenticated,
+
+    // Initialize auth from localStorage (call this on app mount)
+    initializeAuth: () => {
+      const storedToken = getStoredToken();
+      const storedUser = getStoredUser();
+      if (storedToken && storedUser) {
+        set({ token: storedToken, user: storedUser, isAuthenticated: true });
       }
-    } catch (error) {
-      console.error('Failed to save token:', error);
-    }
-    set({ token, isAuthenticated: true });
-  },
-  
-  setUser: (user) => {
-    try {
-      if (window.localStorage) {
-        window.localStorage.setItem('user', JSON.stringify(user));
+    },
+
+    setToken: (token) => {
+      try {
+        if (window.localStorage) {
+          window.localStorage.setItem('token', token);
+        }
+      } catch (error) {
+        console.error('Failed to save token:', error);
       }
-    } catch (error) {
-      console.error('Failed to save user:', error);
-    }
-    set({ user });
-  },
-  
-  logout: () => {
-    try {
-      if (window.localStorage) {
-        window.localStorage.removeItem('token');
-        window.localStorage.removeItem('user');
+      set({ token, isAuthenticated: true });
+    },
+
+    setUser: (user) => {
+      try {
+        if (window.localStorage) {
+          window.localStorage.setItem('user', JSON.stringify(user));
+        }
+      } catch (error) {
+        console.error('Failed to save user:', error);
       }
-    } catch (error) {
-      console.error('Failed to remove auth data:', error);
-    }
-    set({ token: null, user: null, isAuthenticated: false });
-  },
-}));
+      set({ user });
+    },
+
+    logout: () => {
+      try {
+        if (window.localStorage) {
+          window.localStorage.removeItem('token');
+          window.localStorage.removeItem('user');
+        }
+      } catch (error) {
+        console.error('Failed to remove auth data:', error);
+      }
+      set({ token: null, user: null, isAuthenticated: false });
+    },
+  };
+});
 
 export default useAuthStore;

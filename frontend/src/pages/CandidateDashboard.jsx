@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
 import { Navigation } from '../components/Navigation';
 import {
@@ -649,6 +650,7 @@ const CommitteeDecision = ({ committeePacket }) => {
 
 // Main Candidate Dashboard Component
 export const CandidateDashboard = () => {
+    const navigate = useNavigate();
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -778,6 +780,21 @@ export const CandidateDashboard = () => {
                     />
 
                     {error && <Alert type="danger" message={error} onClose={() => setError('')} />}
+
+                    {/* Voice Interview Practice Banner */}
+                    <div
+                        onClick={() => navigate('/voice-interview')}
+                        className="mb-8 cursor-pointer group bg-gradient-to-r from-violet-600/10 via-purple-600/10 to-indigo-600/10 border border-violet-200 rounded-2xl p-5 flex items-center gap-5 hover:shadow-lg hover:shadow-violet-500/10 transition-all duration-300"
+                    >
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
+                            🎤
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-slate-800 text-base group-hover:text-violet-700 transition-colors">AI Voice Interview Practice</h3>
+                            <p className="text-sm text-slate-500 mt-0.5">Practice with an AI that speaks questions & listens to your voice answers</p>
+                        </div>
+                        <span className="text-violet-500 group-hover:translate-x-1 transition-transform text-lg">→</span>
+                    </div>
 
                     {processed.length > 0 && (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -954,8 +971,8 @@ export const CandidateDashboard = () => {
                                         onClick={() => setActiveTab(tab.key)}
                                         title={tab.label}
                                         className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive
-                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                                            : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
                                             }`}
                                     >
                                         {tab.icon}

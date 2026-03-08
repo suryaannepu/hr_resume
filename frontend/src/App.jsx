@@ -13,6 +13,7 @@ import { JobsMarketplace } from './pages/JobsMarketplace';
 import { ApplyJob } from './pages/ApplyJob';
 import { CandidateDashboard } from './pages/CandidateDashboard';
 import { AIInterview } from './pages/AIInterview';
+import { VoiceInterview } from './pages/VoiceInterview';
 
 // Styles
 import './styles.css';
@@ -132,6 +133,14 @@ export default function App() {
           element={
             <PrivateRoute requiredRole="candidate">
               <AIInterview />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/voice-interview"
+          element={
+            <PrivateRoute requiredRole="candidate">
+              <VoiceInterview />
             </PrivateRoute>
           }
         />

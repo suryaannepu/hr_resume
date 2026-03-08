@@ -85,3 +85,9 @@ def get_shortlisted_collection():
     if db_instance is None:
         raise RuntimeError("Database connection not available")
     return db_instance["shortlisted_candidates"]
+
+def get_voice_sessions_collection():
+    db_instance = get_db()
+    if db_instance is None:
+        raise RuntimeError("Database connection not available")
+    return db_instance["voice_interview_sessions"]
