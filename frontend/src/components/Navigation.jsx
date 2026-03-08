@@ -1,73 +1,127 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Briefcase, 
+  Search, 
+  FileText, 
+  User, 
+  LogOut, 
+  Menu, 
+  X,
+  Sparkles,
+  PlusCircle
+} from 'lucide-react';
 import useAuthStore from '../context/authStore';
 
 export const Navigation = ({ userRole }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, user } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
+  const isActive = (path) => location.pathname === path;
+
+  const navItems = userRole === 'recruiter' ? [
+    { path: '/recruiter-dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/post-job', label: 'Post Job', icon: PlusCircle },
+  ] : [
+    { path: '/jobs', label: 'Browse Jobs', icon: Search },
+    { path: '/candidate-dashboard', label: 'My Applications', icon: FileText },
+  ];
+
   return (
-    <nav className="sticky top-0 z-50 bg-slate-925/80 backdrop-blur-xl border-b border-white/5">
+    <nav className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-lg shadow-lg shadow-brand-500/20 group-hover:shadow-brand-500/40 transition-all duration-300">
-              ⚡
+          <div 
+            className="flex items-center gap-3 cursor-pointer group" 
+            onClick={() => navigate('/')}
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300">
+              <Sparkles size={18} className="text-white" />
             </div>
-            <span className="text-lg font-bold gradient-text hidden sm:inline">Agentic AI Hiring</span>
+            <span className="text-lg font-bold bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent hidden sm:inline">
+              AI Recruit
+            </span>
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-2">
-            {userRole === 'recruiter' ? (
-              <>
-                <button onClick={() => navigate('/recruiter-dashboard')} className="btn-ghost">📊 Dashboard</button>
-                <button onClick={() => navigate('/post-job')} className="btn-ghost">➕ Post Job</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => navigate('/jobs')} className="btn-ghost">🔍 Browse Jobs</button>
-                <button onClick={() => navigate('/candidate-dashboard')} className="btn-ghost">📋 My Applications</button>
-              </>
-            )}
-            <div className="w-px h-6 bg-white/10 mx-2" />
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActive(item.path)
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
+                }`}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </button>
+            ))}
+            
+            <div className="w-px h-6 bg-slate-200 mx-3" />
+            
+            {/* User Profile */}
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white">
-                {(user?.name || 'U').charAt(0).toUpperCase()}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-xs font-bold text-white">
+                  {(user?.name || 'U').charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-slate-700 hidden lg:inline">
+                  {user?.name || 'User'}
+                </span>
               </div>
-              <button onClick={handleLogout} className="btn-ghost text-rose-400 hover:text-rose-300 hover:bg-rose-500/10">
-                Logout
+              <button 
+                onClick={handleLogout} 
+                className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                title="Logout"
+              >
+                <LogOut size={18} />
               </button>
             </div>
           </div>
 
           {/* Mobile hamburger */}
-          <button className="md:hidden text-slate-400 hover:text-white p-2" onClick={() => setMenuOpen(!menuOpen)}>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {menuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
-            </svg>
+          <button 
+            className="md:hidden p-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all" 
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {menuOpen && (
-          <div className="md:hidden pb-4 border-t border-white/5 mt-2 pt-4 space-y-2 animate-slide-up">
-            {userRole === 'recruiter' ? (
-              <>
-                <button onClick={() => { navigate('/recruiter-dashboard'); setMenuOpen(false); }} className="block w-full text-left btn-ghost">📊 Dashboard</button>
-                <button onClick={() => { navigate('/post-job'); setMenuOpen(false); }} className="block w-full text-left btn-ghost">➕ Post Job</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => { navigate('/jobs'); setMenuOpen(false); }} className="block w-full text-left btn-ghost">🔍 Browse Jobs</button>
-                <button onClick={() => { navigate('/candidate-dashboard'); setMenuOpen(false); }} className="block w-full text-left btn-ghost">📋 My Applications</button>
-              </>
-            )}
-            <button onClick={handleLogout} className="block w-full text-left btn-ghost text-rose-400">Logout</button>
+          <div className="md:hidden pb-4 border-t border-slate-100 mt-2 pt-4 space-y-1 animate-fade-in-up">
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => { navigate(item.path); setMenuOpen(false); }}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  isActive(item.path)
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50'
+                }`}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </button>
+            ))}
+            <div className="border-t border-slate-100 my-2" />
+            <button 
+              onClick={() => { handleLogout(); setMenuOpen(false); }} 
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50 transition-all"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
           </div>
         )}
       </div>
