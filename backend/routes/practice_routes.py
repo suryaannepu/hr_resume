@@ -39,17 +39,15 @@ def get_practice_question(payload, application_id):
     question_number = data.get('question_number', 1)
     previous_questions = data.get('previous_questions', [])
 
-    try:
-        result = generate_practice_question(
-            job_title=job.get('job_title', 'the position'),
-            job_description=job.get('description', ''),
-            candidate_skills=app.get('extracted_skills', []),
-            question_number=question_number,
-            previous_questions=previous_questions,
-        )
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to generate question: {str(e)}"}), 500
+    result = generate_practice_question(
+        job_title=job.get('job_title', 'the position'),
+        job_description=job.get('description', ''),
+        candidate_skills=app.get('extracted_skills', []),
+        question_number=question_number,
+        previous_questions=previous_questions,
+    )
+
+    return jsonify(result), 200
 
 
 @practice_bp.route('/<application_id>/evaluate', methods=['POST'])
@@ -74,14 +72,12 @@ def evaluate_answer(payload, application_id):
     if not question or not answer:
         return jsonify({"error": "Question and answer are required"}), 400
 
-    try:
-        result = evaluate_practice_answer(
-            question=question,
-            question_type=question_type,
-            answer=answer,
-            job_title=job.get('job_title', 'the position'),
-            job_description=job.get('description', ''),
-        )
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to evaluate answer: {str(e)}"}), 500
+    result = evaluate_practice_answer(
+        question=question,
+        question_type=question_type,
+        answer=answer,
+        job_title=job.get('job_title', 'the position'),
+        job_description=job.get('description', ''),
+    )
+
+    return jsonify(result), 200

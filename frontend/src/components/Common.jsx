@@ -231,7 +231,7 @@ export const AgentCard = ({ icon: Icon, title, status, children, accentColor = '
 const AGENTS = [
   { key: 'resume', icon: FileText, name: 'Resume Parser' },
   { key: 'jd', icon: FileText, name: 'JD Analyzer' },
-  { key: 'skills', icon: Target, name: 'Skill Normalizer' },
+  { key: 'skills', icon: Target, name: 'Skill Match' },
   { key: 'scoring', icon: BarChart3, name: 'Scoring' },
   { key: 'insights', icon: Lightbulb, name: 'Insights' },
   { key: 'risk', icon: Shield, name: 'Risk' },
@@ -241,53 +241,69 @@ const AGENTS = [
 ];
 
 export const AgentPipelineVisualizer = ({ status = 'pending', agentOutputs = {} }) => {
-  const getAgentStatus = (key) => {
+  const getAgentStatus = (key, idx) => {
     if (status === 'processed') return 'done';
     if (status === 'failed') return 'error';
     if (agentOutputs && agentOutputs[key]) return 'done';
-    if (status === 'processing') return 'processing';
+    if (status === 'processing') {
+      const doneCount = Object.keys(agentOutputs || {}).length;
+      if (idx === doneCount) return 'active';
+      if (idx < doneCount) return 'done';
+    }
     return 'pending';
   };
 
-  const statusStyles = (s) => {
-    if (s === 'done') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    if (s === 'processing') return 'bg-amber-100 text-amber-700 border-amber-200 animate-pulse';
-    if (s === 'error') return 'bg-rose-100 text-rose-700 border-rose-200';
-    return 'bg-slate-100 text-slate-500 border-slate-200';
-  };
-
-  const statusDot = (s) => {
-    if (s === 'done') return 'bg-emerald-500';
-    if (s === 'processing') return 'bg-amber-500 animate-pulse';
-    if (s === 'error') return 'bg-rose-500';
-    return 'bg-slate-300';
+  const stepColor = (s) => {
+    if (s === 'done') return { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-600', dot: 'bg-emerald-500' };
+    if (s === 'active') return { bg: 'bg-blue-50', border: 'border-blue-300', icon: 'text-blue-600', dot: 'bg-blue-500' };
+    if (s === 'error') return { bg: 'bg-rose-50', border: 'border-rose-200', icon: 'text-rose-600', dot: 'bg-rose-500' };
+    return { bg: 'bg-slate-50', border: 'border-slate-200', icon: 'text-slate-400', dot: 'bg-slate-300' };
   };
 
   return (
-    <div className="glass-card-static">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-          <Sparkles size={20} className="text-blue-600" />
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+          <Sparkles size={16} className="text-white" />
         </div>
-        <h4 className="text-sm font-semibold text-slate-800">AI Agent Pipeline</h4>
+        <div className="flex-1">
+          <h4 className="text-sm font-bold text-slate-800">AI Agent Pipeline</h4>
+          <p className="text-xs text-slate-500">
+            {status === 'processed' ? 'All agents completed' : status === 'processing' ? 'Agents are running...' : status === 'failed' ? 'Pipeline failed' : 'Waiting to start'}
+          </p>
+        </div>
         <Badge variant={status === 'processed' ? 'success' : status === 'processing' ? 'warning' : status === 'failed' ? 'danger' : 'default'}>
           {status === 'processed' ? 'Complete' : status === 'processing' ? 'Running' : status === 'failed' ? 'Failed' : 'Pending'}
         </Badge>
       </div>
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+
+      <div className="flex items-center gap-0 overflow-x-auto pb-1">
         {AGENTS.map((agent, i) => {
-          const s = getAgentStatus(agent.key);
+          const s = getAgentStatus(agent.key, i);
+          const colors = stepColor(s);
           return (
             <React.Fragment key={agent.key}>
-              <div className="flex flex-col items-center min-w-[70px] group">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-1 transition-all duration-300 border ${statusStyles(s)}`}>
-                  <agent.icon size={18} />
+              <div
+                className={`flex flex-col items-center min-w-[62px] pipeline-step-enter ${s === 'active' ? 'pipeline-step-active' : ''}`}
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-500 ${colors.bg} ${colors.border}`}>
+                  {s === 'done' ? (
+                    <TrendingUp size={16} className="text-emerald-600" />
+                  ) : (
+                    <agent.icon size={16} className={colors.icon} />
+                  )}
                 </div>
-                <div className={`w-2 h-2 rounded-full mb-1 ${statusDot(s)}`} />
-                <span className="text-[10px] text-slate-500 text-center leading-tight font-medium">{agent.name}</span>
+                <span className={`text-[10px] mt-1.5 text-center leading-tight font-medium ${s === 'done' ? 'text-emerald-600' : s === 'active' ? 'text-blue-600' : 'text-slate-400'}`}>
+                  {agent.name}
+                </span>
               </div>
               {i < AGENTS.length - 1 && (
-                <div className={`w-3 h-0.5 mb-5 rounded-full ${s === 'done' ? 'bg-emerald-300' : 'bg-slate-200'}`} />
+                <div className="w-4 h-[2px] bg-slate-200 rounded-full mb-4 mx-0.5 relative overflow-hidden flex-shrink-0">
+                  {(s === 'done') && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full pipeline-connector-fill" />
+                  )}
+                </div>
               )}
             </React.Fragment>
           );

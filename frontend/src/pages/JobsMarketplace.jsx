@@ -28,11 +28,16 @@ export const JobsMarketplace = () => {
     finally { setLoading(false); }
   };
 
-  const filtered = jobs.filter(j =>
-    j.job_title?.toLowerCase().includes(search.toLowerCase()) ||
-    j.company_name?.toLowerCase().includes(search.toLowerCase()) ||
-    j.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = jobs.filter(j => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      j.job_title?.toLowerCase().includes(q) ||
+      j.company_name?.toLowerCase().includes(q) ||
+      j.description?.toLowerCase().includes(q) ||
+      j.required_skills?.some(s => s.toLowerCase().includes(q))
+    );
+  });
 
   if (loading) return <><Navigation userRole="candidate" /><Loading text="Loading jobs..." /></>;
 
