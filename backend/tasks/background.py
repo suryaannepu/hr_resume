@@ -6,8 +6,8 @@ Keeps resume processing off the request thread so uploads return fast.
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
-# Small worker pool to avoid overwhelming LLM + DB
-_executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(max_workers=2)
+# Worker pool to allow concurrent processing of multiple applications
+_executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(max_workers=5)
 
 
 def submit_task(fn, *args, **kwargs):

@@ -12,6 +12,7 @@ import { PostJob } from './pages/PostJob';
 import { JobsMarketplace } from './pages/JobsMarketplace';
 import { ApplyJob } from './pages/ApplyJob';
 import { CandidateDashboard } from './pages/CandidateDashboard';
+import { AIInterview } from './pages/AIInterview';
 
 // Styles
 import './styles.css';
@@ -52,91 +53,99 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Home/Landing Page */}
-        <Route 
-          path="/" 
-          element={<Home />} 
+        <Route
+          path="/"
+          element={<Home />}
         />
 
         {/* Public Routes */}
-        <Route 
-          path="/login" 
+        <Route
+          path="/login"
           element={
             <PublicRoute>
               <Login />
             </PublicRoute>
-          } 
+          }
         />
-        <Route 
-          path="/register" 
+        <Route
+          path="/register"
           element={
             <PublicRoute>
               <Register />
             </PublicRoute>
-          } 
+          }
         />
 
         {/* Recruiter Routes */}
-        <Route 
-          path="/recruiter-dashboard" 
+        <Route
+          path="/recruiter-dashboard"
           element={
             <PrivateRoute requiredRole="recruiter">
               <RecruiterDashboard />
             </PrivateRoute>
-          } 
+          }
         />
-        <Route 
-          path="/job/:jobId/candidates" 
+        <Route
+          path="/job/:jobId/candidates"
           element={
             <PrivateRoute requiredRole="recruiter">
               <JobCandidates />
             </PrivateRoute>
-          } 
+          }
         />
-        <Route 
-          path="/post-job" 
+        <Route
+          path="/post-job"
           element={
             <PrivateRoute requiredRole="recruiter">
               <PostJob />
             </PrivateRoute>
-          } 
+          }
         />
 
         {/* Candidate Routes */}
-        <Route 
-          path="/jobs" 
+        <Route
+          path="/jobs"
           element={
             <PrivateRoute requiredRole="candidate">
               <JobsMarketplace />
             </PrivateRoute>
-          } 
+          }
         />
-        <Route 
-          path="/apply/:jobId" 
+        <Route
+          path="/apply/:jobId"
           element={
             <PrivateRoute requiredRole="candidate">
               <ApplyJob />
             </PrivateRoute>
-          } 
+          }
         />
-        <Route 
-          path="/candidate-dashboard" 
+        <Route
+          path="/candidate-dashboard"
           element={
             <PrivateRoute requiredRole="candidate">
               <CandidateDashboard />
             </PrivateRoute>
-          } 
+          }
+        />
+        <Route
+          path="/interview/:applicationId"
+          element={
+            <PrivateRoute requiredRole="candidate">
+              <AIInterview />
+            </PrivateRoute>
+          }
         />
 
         {/* Default redirect */}
-        <Route 
-          path="*" 
+        <Route
+          path="*"
           element={
             isAuthenticated ? (
               <Navigate to={user?.role === 'recruiter' ? '/recruiter-dashboard' : '/jobs'} />
             ) : (
               <Navigate to="/" />
             )
-          } 
+          }
         />
       </Routes>
     </BrowserRouter>

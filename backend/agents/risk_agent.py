@@ -1,46 +1,18 @@
-"""Risk / Integrity Agent
+"""Risk Assessment Agent – Direct Groq API"""
+import json
+from utils.groq_client import call_groq_llm
 
-Highlights potential risks or inconsistencies in a resume relative to a job.
-This is not a fraud detector; it provides prompts for human review.
+
+def run_risk_assessment(candidate_info: dict, job_requirements: dict) -> dict:
+    """Analyze potential hiring risks for a candidate."""
+    system_prompt = "You are a specialized Risk Assessment Agent for HR."
+    user_prompt = f"""Analyze potential hiring risks (job hopping, vague impacts, missing core requirements). Return JSON ONLY:
+- risk_level (string: 'Low', 'Medium', 'High')
+- risk_factors (array of strings)
+- verification_questions (array of specific questions to ask in interview to verify claims)
+- profile_red_flags (array of strings)
+
+Candidate: {json.dumps(candidate_info)}
+Requirements: {json.dumps(job_requirements)}
 """
-
-from crewai import Agent, Task
-from langchain_groq import ChatGroq
-import os
-
-
-def create_risk_agent():
-    llm = ChatGroq(
-        model=os.getenv("LLM_MODEL", "llama-3.3-70b-versatile"),
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-    )
-
-    return Agent(
-        role="Hiring Risk Analyst",
-        goal="Identify possible inconsistencies, unclear claims, or verification points in the resume",
-        backstory=(
-            "You help recruiters reduce hiring risk by pointing out ambiguous claims, missing details, "
-            "or areas that need verification—without making accusations."
-        ),
-        llm=llm,
-        verbose=False,
-    )
-
-
-def create_risk_task():
-    return Task(
-        description=(
-            "Review the candidate profile extracted from the resume (in context) and the job requirements (in context). "
-            "List verification prompts and potential risk signals (if any).\n\n"
-            "Return ONLY valid JSON with keys:\n"
-            "- risk_level: string ('Low','Medium','High')\n"
-            "- verification_questions: array of strings\n"
-            "- potential_inconsistencies: array of strings\n"
-            "- missing_details: array of strings\n"
-            "- notes: string\n\n"
-            "Be conservative: if you don't see strong risk, keep it Low and explain briefly."
-        ),
-        expected_output="JSON object with risk assessment and verification prompts",
-    )
-
-
+    return call_groq_llm(system_prompt, user_prompt)

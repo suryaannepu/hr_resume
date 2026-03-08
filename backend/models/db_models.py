@@ -71,6 +71,26 @@ class JobModel:
             job["recruiter_id"] = str(job["recruiter_id"])
         return recruiter_jobs
 
+    @staticmethod
+    def close_job(job_id):
+        """Close a job posting"""
+        jobs = get_jobs_collection()
+        jobs.update_one(
+            {"_id": ObjectId(job_id)},
+            {"$set": {"status": "closed", "updated_at": datetime.utcnow()}}
+        )
+        return True
+
+    @staticmethod
+    def reopen_job(job_id):
+        """Reopen a closed job posting"""
+        jobs = get_jobs_collection()
+        jobs.update_one(
+            {"_id": ObjectId(job_id)},
+            {"$set": {"status": "active", "updated_at": datetime.utcnow()}}
+        )
+        return True
+
 class ApplicationModel:
     @staticmethod
     def _sanitize_application_for_list(app: dict) -> dict:
@@ -84,6 +104,12 @@ class ApplicationModel:
         if "agent_outputs" in app:
             app.pop("agent_outputs", None)
         return app
+
+    @staticmethod
+    def has_applied(candidate_id, job_id):
+        """Check if candidate has already applied to a job"""
+        apps = get_applications_collection()
+        return apps.find_one({"candidate_id": candidate_id, "job_id": job_id}) is not None
 
     @staticmethod
     def create_application(job_id, candidate_id, candidate_email, resume_text, resume_filename):
@@ -115,6 +141,7 @@ class ApplicationModel:
             "updated_at": datetime.utcnow(),
             "status": "uploaded",
             "processing_step": "uploaded",
+            "decision": None,
             "match_score": match_data['match_score'],
             "match_percentage": match_data['match_percentage'],
             "extracted_skills": resume_skills['all'],
@@ -154,15 +181,66 @@ class ApplicationModel:
     
     @staticmethod
     def get_candidate_applications(candidate_id):
-        """Get applications by candidate"""
+        """Get all applications for a specific candidate with job details"""
         apps = get_applications_collection()
+        jobs = get_jobs_collection()
+        
         applications = list(apps.find({"candidate_id": candidate_id}).sort("created_at", -1))
+        
+        enriched = []
         for app in applications:
             app["_id"] = str(app["_id"])
             app["job_id"] = str(app["job_id"])
             app["candidate_id"] = str(app["candidate_id"])
+            
+            # Get job details
+            job = jobs.find_one({"_id": ObjectId(app["job_id"])})
+            if job:
+                app["job_title"] = job.get("job_title", "Unknown Role")
+                app["company_name"] = job.get("company_name", "Unknown Company")
+                
             ApplicationModel._sanitize_application_for_list(app)
-        return applications
+            enriched.append(app)
+            
+        return enriched
+
+    @staticmethod
+    def update_decision(application_id, decision):
+        """Update candidate decision and status (shortlisted/rejected/hired)"""
+        apps = get_applications_collection()
+        
+        # Map decision to status
+        status_map = {
+            "shortlisted": "interview_pending",
+            "rejected": "rejected",
+            "hired": "hired"
+        }
+        
+        status = status_map.get(decision, decision)
+        
+        apps.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": {
+                "decision": decision,
+                "status": status,
+                "decision_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }}
+        )
+        return True
+
+    @staticmethod
+    def update_status(application_id, status):
+        """Update application status only"""
+        apps = get_applications_collection()
+        apps.update_one(
+            {"_id": ObjectId(application_id)},
+            {"$set": {
+                "status": status,
+                "updated_at": datetime.utcnow()
+            }}
+        )
+        return True
 
 class ShortlistModel:
     @staticmethod

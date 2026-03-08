@@ -9,7 +9,7 @@ FLASK_ENV = os.getenv("FLASK_ENV", "development")
 DEBUG = FLASK_ENV == "development"
 
 # MongoDB
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/hiring_platform")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://siddharth_db:[EMAIL_ADDRESS]/?appName=Cluster")
 DATABASE_NAME = "hiring_platform"
 
 # Groq LLM
@@ -21,6 +21,12 @@ JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
 
 # CORS
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
+# SMTP Email
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
 # Port
 PORT = int(os.getenv("PORT", 5000))

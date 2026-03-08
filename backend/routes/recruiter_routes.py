@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from auth.auth_handler import verify_token
 from models.db_models import JobModel, ApplicationModel, ShortlistModel
 from bson.objectid import ObjectId
+from database import get_applications_collection, get_jobs_collection
 
 recruiter_bp = Blueprint('recruiter', __name__)
 
@@ -40,7 +41,11 @@ def get_dashboard(payload):
     
     for job in jobs:
         applications = ApplicationModel.get_job_applications(job['_id'])
-        processed = [app for app in applications if app.get('status') == 'processed']
+        # Count all applications that have finished AI processing
+        processed = [app for app in applications if app.get('status') not in ('uploaded', 'processing')]
+        
+        # Dashboard preview only shows top candidates who are not finally decided (not hired or rejected)
+        preview_apps = [app for app in processed if app.get('decision') not in ('rejected', 'hired')]
         
         shortlist = ShortlistModel.get_job_shortlist(job['_id'])
         approved = [s for s in shortlist if s.get('approved_by_recruiter')]
@@ -52,7 +57,8 @@ def get_dashboard(payload):
             "processed_applications": len(processed),
             "shortlist_count": len(shortlist),
             "approved_count": len(approved),
-            "applications": applications[:10]  # Last 10 for preview
+            "applications": preview_apps[:10],  # Last 10 active/shortlisted candidates for preview
+            "ai_insights": job.get("ai_insights")
         }
         
         dashboard_data["jobs"].append(job_data)
@@ -231,19 +237,19 @@ def process_pending_applications(payload, job_id):
     if job['recruiter_id'] != payload['user_id']:
         return jsonify({"error": "Unauthorized"}), 403
     
-    # Get pending applications
-    applications = ApplicationModel.get_job_applications(job_id)
-    pending = [app for app in applications if app.get('status') != 'processed']
+    # Get pending applications - fetch full docs for processing
+    apps_col = get_applications_collection()
+    pending = list(apps_col.find({"job_id": job_id, "status": {"$ne": "processed"}}))
     
     # Submit each for processing
     submitted_ids = []
     for app in pending:
-        future = submit_task(
+        submit_task(
             run_application_pipeline,
             str(app['_id']),
             job_id,
             app.get('resume_text', ''),
-            job.get('job_description', '')
+            job.get('description', '')
         )
         submitted_ids.append(str(app['_id']))
     
@@ -303,3 +309,145 @@ def auto_shortlist(payload, job_id):
         "total_candidates": len(processed),
         "qualified_candidates": len(quality_candidates)
     }), 200
+
+
+@recruiter_bp.route('/job/<job_id>/candidate/<application_id>/decision', methods=['POST'])
+@require_auth
+def candidate_decision(payload, job_id, application_id):
+    """Select or reject a candidate and send email notification"""
+
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json()
+    print(f"📥 Received decision request: {data} for App: {application_id}")
+    decision = data.get('decision')
+    if decision not in ('shortlisted', 'rejected', 'hired'):
+        return jsonify({"error": "decision must be 'shortlisted', 'rejected' or 'hired'"}), 400
+
+    app = ApplicationModel.get_application(application_id)
+    if not app or app.get("job_id") != job_id:
+        return jsonify({"error": "Application not found"}), 404
+
+    # Update decision in database (this also updates status)
+    from utils.email_service import send_shortlist_email, send_rejection_email, send_selection_email
+    ApplicationModel.update_decision(application_id, decision)
+
+    # Send email
+    # Get User's registered email
+    from database import get_users_collection
+    from bson.objectid import ObjectId
+    users_col = get_users_collection()
+    candidate_user = users_col.find_one({"_id": ObjectId(app.get('candidate_id'))})
+    if candidate_user and candidate_user.get('email'):
+        candidate_email = candidate_user.get('email')
+    else:
+        candidate_email = app.get('candidate_email', '')
+
+    candidate_name = app.get('candidate_name', 'Candidate')
+    job_title = job.get('job_title', '')
+    company_name = job.get('company_name', '')
+
+    email_sent = False
+    if decision == 'shortlisted':
+        details = {
+            "match_score": app.get('match_score'),
+            "matched_skills": app.get('matching_skills') or app.get('matched_skills', []),
+        }
+        email_sent = send_shortlist_email(candidate_email, candidate_name, job_title, company_name, details)
+    elif decision == 'hired':
+        interview_score = (app.get('interview_report') or {}).get('overall_score')
+        email_sent = send_selection_email(candidate_email, candidate_name, job_title, company_name, interview_score)
+    else: # rejected
+        feedback = {
+            "skill_gaps": app.get('skill_gaps', []) or app.get('missing_skills', []),
+            "resume_improvements": (app.get('candidate_coaching') or {}).get('resume_improvements', []),
+            "coach_message": (app.get('candidate_coaching') or {}).get('short_message', ''),
+        }
+        email_sent = send_rejection_email(candidate_email, candidate_name, job_title, company_name, feedback)
+
+    return jsonify({
+        "success": True,
+        "decision": decision,
+        "email_sent": email_sent,
+        "message": f"Candidate {decision}. {'Email sent.' if email_sent else 'Email not sent (SMTP not configured).'}"
+    }), 200
+
+
+@recruiter_bp.route('/job/<job_id>/close', methods=['PUT'])
+@require_auth
+def close_job(payload, job_id):
+    """Close a job from recruiter dashboard"""
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    JobModel.close_job(job_id)
+    return jsonify({"success": True, "message": "Job closed successfully"}), 200
+
+
+@recruiter_bp.route('/job/<job_id>/reopen', methods=['PUT'])
+@require_auth
+def reopen_job(payload, job_id):
+    """Reopen a closed job from recruiter dashboard"""
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    JobModel.reopen_job(job_id)
+    return jsonify({"success": True, "message": "Job reopened successfully"}), 200
+
+
+@recruiter_bp.route('/job/<job_id>/ai-rank', methods=['POST'])
+@require_auth
+def ai_rank_candidates(payload, job_id):
+    """Run the AI Ranking + Shortlisting pipeline for a job's processed candidates."""
+    from agents.pipeline import run_job_ranking_pipeline
+
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    result = run_job_ranking_pipeline(job_id)
+    if "error" in result:
+        return jsonify(result), 400
+
+    return jsonify({
+        "success": True,
+        "ranking": result.get("ranking", {}),
+        "shortlist": result.get("shortlist", {}),
+    }), 200
+
+
+@recruiter_bp.route('/job/<job_id>/ai-insights', methods=['GET'])
+@require_auth
+def ai_insights(payload, job_id):
+    """Get AI-generated executive insights for a job's candidate pool."""
+    from agents.pipeline import get_job_ai_insights
+
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Return cached insights if fresh (< 5 min old)
+    import datetime as dt
+    cached = job.get("ai_insights")
+    cached_at = job.get("insights_updated_at")
+    if cached and cached_at and (dt.datetime.utcnow() - cached_at).total_seconds() < 300:
+        return jsonify(cached), 200
+
+    result = get_job_ai_insights(job_id)
+    return jsonify(result), 200
+

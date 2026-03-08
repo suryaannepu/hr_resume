@@ -22,9 +22,8 @@ def connect_db(retry_count=0, is_startup=False):
     try:
         print(f"🔄 Attempting to connect to MongoDB...")
         
-        # Try absolute minimal config first
-        # Let the connection string handle everything
-        client = MongoClient(MONGODB_URI)
+        # Use certifi for SSL certificates to avoid handshake failures
+        client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where())
         
         print("🔄 Pinging MongoDB...")
         client.admin.command('ping', timeoutMS=20000)

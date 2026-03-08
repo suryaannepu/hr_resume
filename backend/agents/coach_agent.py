@@ -1,45 +1,19 @@
-"""Candidate Coach Agent
+"""Career Coach Agent – Direct Groq API"""
+import json
+from utils.groq_client import call_groq_llm
 
-Creates constructive, candidate-facing guidance:
-- resume improvements for ATS/clarity
-- targeted upskilling plan based on job gaps
+
+def run_coaching(candidate_info: dict, missing_skills: list) -> dict:
+    """Generate constructive career coaching feedback for a candidate."""
+    system_prompt = (
+        "You are a career coach helping the candidate understand their application."
+    )
+    user_prompt = f"""Write a brief, constructive feedback note for the candidate. Return JSON ONLY:
+- short_message (string: empathetic, 2-3 sentences explaining their fit)
+- resume_improvements (array of strings: actionable ways to improve their resume based on their gaps)
+- recommended_skills_to_learn (array of strings)
+
+Candidate: {json.dumps(candidate_info)}
+Missing Skills: {json.dumps(missing_skills)}
 """
-
-from crewai import Agent, Task
-from langchain_groq import ChatGroq
-import os
-
-
-def create_coach_agent():
-    llm = ChatGroq(
-        model=os.getenv("LLM_MODEL", "llama-3.3-70b-versatile"),
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-    )
-
-    return Agent(
-        role="Career Coach",
-        goal="Help the candidate improve their resume and close skill gaps for this role",
-        backstory=(
-            "You are a practical career coach specializing in technical hiring. "
-            "You give concrete, actionable advice with examples."
-        ),
-        llm=llm,
-        verbose=False,
-    )
-
-
-def create_coach_task():
-    return Task(
-        description=(
-            "Using the candidate profile, job requirements, scoring analysis, and insights (provided in context), "
-            "generate candidate-facing guidance.\n\n"
-            "Return ONLY valid JSON with keys:\n"
-            "- resume_improvements: array of strings (max 8)\n"
-            "- skill_upgrade_plan: array of objects {skill, why_it_matters, first_steps}\n"
-            "- portfolio_suggestions: array of strings (max 5)\n"
-            "- short_message: string (2-4 sentences)\n"
-        ),
-        expected_output="JSON object with resume tips and upskilling plan",
-    )
-
-
+    return call_groq_llm(system_prompt, user_prompt)

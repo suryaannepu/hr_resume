@@ -67,3 +67,29 @@ def get_job(job_id):
         return jsonify({"error": "Job not found"}), 404
     
     return jsonify(job), 200
+
+@jobs_bp.route('/<job_id>/close', methods=['PUT'])
+@require_auth
+def close_job(payload, job_id):
+    """Close a job posting"""
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    JobModel.close_job(job_id)
+    return jsonify({"success": True, "message": "Job closed successfully"}), 200
+
+@jobs_bp.route('/<job_id>/reopen', methods=['PUT'])
+@require_auth
+def reopen_job(payload, job_id):
+    """Reopen a closed job posting"""
+    job = JobModel.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job['recruiter_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    JobModel.reopen_job(job_id)
+    return jsonify({"success": True, "message": "Job reopened successfully"}), 200

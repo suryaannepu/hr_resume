@@ -4,10 +4,10 @@
   "description": "Agentic AI Hiring Platform",
   "private": true,
   "dependencies": {
+    "axios": "^1.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.15.0",
-    "axios": "^1.5.0",
     "zustand": "^4.4.1"
   },
   "scripts": {
@@ -34,6 +34,10 @@
     ]
   },
   "devDependencies": {
-    "react-scripts": "5.0.1"
+    "@tailwindcss/forms": "^0.5.11",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.4.19"
   }
 }

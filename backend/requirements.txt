@@ -3,9 +3,6 @@ Flask-CORS
 pymongo
 PyJWT
 bcrypt
-crewai
-langchain
-langchain-groq
 PyMuPDF
 python-dotenv
 requests

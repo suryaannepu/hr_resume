@@ -39,6 +39,13 @@ def require_auth(f):
     decorator.__name__ = f.__name__
     return decorator
 
+@applications_bp.route('/check/<job_id>', methods=['GET'])
+@require_auth
+def check_applied(payload, job_id):
+    """Check if candidate has already applied to a job"""
+    has_applied = ApplicationModel.has_applied(payload['user_id'], job_id)
+    return jsonify({"applied": has_applied}), 200
+
 @applications_bp.route('/apply', methods=['POST'])
 @require_auth
 def apply_to_job(payload):
@@ -52,6 +59,14 @@ def apply_to_job(payload):
     job = JobModel.get_job(data['job_id'])
     if not job:
         return jsonify({"error": "Job not found"}), 404
+    
+    # Check job is still active
+    if job.get('status') != 'active':
+        return jsonify({"error": "This job is no longer accepting applications"}), 400
+    
+    # Duplicate application guard
+    if ApplicationModel.has_applied(payload['user_id'], data['job_id']):
+        return jsonify({"error": "You have already applied to this job"}), 409
     
     # Extract text from base64 PDF
     resume_text = extract_text_from_base64(data['resume_base64'])
