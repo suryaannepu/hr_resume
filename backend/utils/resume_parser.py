@@ -30,8 +30,19 @@ def extract_text_from_base64(base64_string):
         doc.close()
         return text
     except Exception as e:
-        print(f"Error extracting text from base64: {e}")
-        return ""
+        print(f"PyMuPDF failed extracting text from base64: {e}. Trying PyPDF2...")
+        try:
+            import PyPDF2
+            pdf_bytes = base64.b64decode(base64_string)
+            pdf_stream = io.BytesIO(pdf_bytes)
+            reader = PyPDF2.PdfReader(pdf_stream)
+            text = ""
+            for i in range(len(reader.pages)):
+                text += reader.pages[i].extract_text() or ""
+            return text
+        except Exception as e2:
+            print(f"PyPDF2 failed as well: {e2}")
+            return ""
 
 def extract_email(text):
     """Extract email from resume text"""
