@@ -35,9 +35,9 @@ def _strip_markdown(text: str) -> str:
     return text.strip()
 
 
-async def _synthesize_async(text: str) -> bytes:
+async def _synthesize_async(text: str, voice: str) -> bytes:
     """Async synthesis using edge-tts."""
-    communicate = edge_tts.Communicate(text, VOICE)
+    communicate = edge_tts.Communicate(text, voice)
     audio_chunks = []
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
@@ -45,11 +45,12 @@ async def _synthesize_async(text: str) -> bytes:
     return b"".join(audio_chunks)
 
 
-def synthesize_speech(text: str) -> bytes:
+def synthesize_speech(text: str, voice: str = "en-US-GuyNeural") -> bytes:
     """Convert text to speech audio (MP3 bytes).
 
     Args:
         text: The text to convert (may contain markdown).
+        voice: The edge-tts voice to use.
 
     Returns:
         MP3 audio bytes ready to be sent to the client.
@@ -67,10 +68,10 @@ def synthesize_speech(text: str) -> bytes:
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 result = pool.submit(
-                    asyncio.run, _synthesize_async(clean_text)
+                    asyncio.run, _synthesize_async(clean_text, voice)
                 ).result(timeout=30)
             return result
         else:
-            return loop.run_until_complete(_synthesize_async(clean_text))
+            return loop.run_until_complete(_synthesize_async(clean_text, voice))
     except RuntimeError:
-        return asyncio.run(_synthesize_async(clean_text))
+        return asyncio.run(_synthesize_async(clean_text, voice))

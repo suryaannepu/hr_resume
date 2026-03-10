@@ -102,15 +102,21 @@ def start_ai_interview(payload, application_id):
     result = start_interview(session_id)
     result["session_id"] = session_id
     
-    # Process TTS
+    # Process TTS for dialogue array
     try:
-        audio_bytes = synthesize_speech(result.get("message", ""))
-        result["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+        VOICES = ["en-US-GuyNeural", "en-US-JennyNeural", "en-US-ChristopherNeural"]
+        dialogues = result.get("dialogues", [])
+        
+        for d in dialogues:
+            idx = d.get("speaker_index", 0)
+            voice = VOICES[idx] if 0 <= idx < len(VOICES) else VOICES[0]
+            audio_bytes = synthesize_speech(d.get("message", ""), voice=voice)
+            d["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+            
     except Exception as e:
         print(f"⚠️ TTS failed at start: {e}")
-        result["audio"] = ""
 
-    return jsonify(result), 201
+    return jsonify({"session_id": session_id, "dialogues": result.get("dialogues", []), "status": result.get("status")}), 201
 
 
 @interview_bp.route('/<application_id>/chat', methods=['POST'])
@@ -136,13 +142,18 @@ def chat_in_interview(payload, application_id):
 
     result = process_candidate_response(session["_id"], answer)
     
-    # Process TTS
+    # Process TTS for dialogue array
     try:
-        if result.get("message"):
-            audio_bytes = synthesize_speech(result.get("message", ""))
-            result["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+        VOICES = ["en-US-GuyNeural", "en-US-JennyNeural", "en-US-ChristopherNeural"]
+        dialogues = result.get("dialogues", [])
+        
+        for d in dialogues:
+            idx = d.get("speaker_index", 0)
+            voice = VOICES[idx] if 0 <= idx < len(VOICES) else VOICES[0]
+            audio_bytes = synthesize_speech(d.get("message", ""), voice=voice)
+            d["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+            
     except Exception as e:
         print(f"⚠️ TTS failed at chat: {e}")
-        result["audio"] = ""
         
-    return jsonify(result), 200
+    return jsonify({"dialogues": result.get("dialogues", []), "status": result.get("status")}), 200

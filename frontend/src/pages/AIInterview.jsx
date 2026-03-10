@@ -26,6 +26,7 @@ export const AIInterview = () => {
     const [liveTranscript, setLiveTranscript] = useState('');
     const [interviewStatus, setInterviewStatus] = useState(''); // UI textual status
     const [silenceWarning, setSilenceWarning] = useState(0);
+    const [elapsedTime, setElapsedTime] = useState(0); // in seconds
 
     // Refs
     const audioRef = useRef(null);
@@ -38,11 +39,13 @@ export const AIInterview = () => {
     const warningTimer2Ref = useRef(null);
     const chatEndRef = useRef(null);
 
+    const finalTranscriptRef = useRef('');
+
     // Speakers for Panel
     const PANEL_MEMBERS = [
-        { name: "Alex", role: "Hiring Manager", emoji: "🤖", color: "blue" },
-        { name: "Sarah", role: "Technical Lead", emoji: "👩‍💻", color: "emerald" },
-        { name: "David", role: "Culture & Fit", emoji: "🧑‍💼", color: "purple" }
+        { name: "Alex", role: "Hiring Manager", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80", color: "blue" },
+        { name: "Sarah", role: "Technical Lead", avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80", color: "emerald" },
+        { name: "David", role: "Culture & Fit", avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&q=80", color: "purple" }
     ];
     const [activeSpeaker, setActiveSpeaker] = useState(0);
 
@@ -64,13 +67,35 @@ export const AIInterview = () => {
             // If it's already in progress, start webcam
             if (d.status === 'in_progress') {
                 startWebcam();
-                setInterviewStatus('Interview resumed. Waiting for you to speak or click continue...');
+                setInterviewStatus('Interview resumed. Click "Resume Interview" below to continue.');
             }
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to load interview status');
         } finally {
             setLoading(false);
         }
+    };
+
+    const resumeInterview = () => {
+        setInterviewStatus('Your turn! Speak now...');
+        startRecording();
+    };
+
+    useEffect(() => {
+        let timer;
+        if (status === 'in_progress') {
+            timer = setInterval(() => {
+                setElapsedTime(prev => prev + 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [status]);
+
+    const formatTimer = (seconds) => {
+        const remaining = Math.max(0, 45 * 60 - seconds);
+        const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+        const s = (remaining % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
     };
 
 
@@ -90,10 +115,15 @@ export const AIInterview = () => {
             };
 
             recognition.onresult = (event) => {
-                let currentText = '';
-                for (let i = 0; i < event.results.length; i++) {
-                    currentText += event.results[i][0].transcript;
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        finalTranscriptRef.current += event.results[i][0].transcript + ' ';
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
                 }
+                const currentText = (finalTranscriptRef.current + interim).trim();
                 setLiveTranscript(currentText);
                 transcriptRef.current = currentText;
                 resetSilenceTimer();
@@ -151,6 +181,7 @@ export const AIInterview = () => {
         if (!recognitionRef.current) return;
         setLiveTranscript('');
         transcriptRef.current = '';
+        finalTranscriptRef.current = '';
         isRecordingRef.current = true;
         setIsRecording(true);
         setSilenceWarning(0);
@@ -218,10 +249,14 @@ export const AIInterview = () => {
             setStatus('in_progress');
             setQuestionInfo({ current: d.question_number || 1, total: d.total_questions || 5 });
 
-            if (d.message) {
-                setConversation(prev => [...prev, { role: 'interviewer', content: d.message }]);
-                if (d.audio) playQuestionAudio(d.audio, 0);
-                else startRecording();
+            if (d.dialogues && d.dialogues.length > 0) {
+                const newMessages = d.dialogues.map(dx => ({
+                    role: 'interviewer',
+                    content: dx.message,
+                    speaker_index: dx.speaker_index || 0
+                }));
+                setConversation(prev => [...prev, ...newMessages]);
+                playDialogues(d.dialogues);
             }
 
         } catch (err) {
@@ -244,13 +279,17 @@ export const AIInterview = () => {
             const res = await apiClient.post(`/interview/${applicationId}/chat`, { message: msgText });
             const d = res.data;
 
-            if (d.message) {
-                setConversation(prev => [...prev, { role: 'interviewer', content: d.message }]);
-                // Rotate active speaker for panel feel
-                const nextSpeaker = (activeSpeaker + 1) % PANEL_MEMBERS.length;
-                setActiveSpeaker(nextSpeaker);
-
-                if (d.audio) playQuestionAudio(d.audio, nextSpeaker);
+            if (d.dialogues && d.dialogues.length > 0) {
+                const newMessages = d.dialogues.map(dx => ({
+                    role: 'interviewer',
+                    content: dx.message,
+                    speaker_index: dx.speaker_index || 0
+                }));
+                setConversation(prev => [...prev, ...newMessages]);
+                playDialogues(d.dialogues);
+            } else if (d.message) {
+                setConversation(prev => [...prev, { role: 'interviewer', content: d.message, speaker_index: d.speaker_index || 0 }]);
+                if (d.audio) playDialogues([{ audio: d.audio, speaker_index: d.speaker_index || 0 }]);
                 else { setInterviewStatus('Your turn! Speak now...'); startRecording(); }
             }
 
@@ -296,38 +335,48 @@ export const AIInterview = () => {
         }, 3000);
     };
 
-    const playQuestionAudio = (base64Audio, speakerIdx) => {
-        try {
-            const audioBytes = atob(base64Audio);
-            const arrayBuffer = new ArrayBuffer(audioBytes.length);
-            const view = new Uint8Array(arrayBuffer);
-            for (let i = 0; i < audioBytes.length; i++) view[i] = audioBytes.charCodeAt(i);
-            const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-            const url = URL.createObjectURL(blob);
-
-            if (audioRef.current) {
-                audioRef.current.src = url;
-                setIsAiSpeaking(true);
-                setInterviewStatus(`${PANEL_MEMBERS[speakerIdx].name} is speaking...`);
-
-                audioRef.current.play().catch(() => {
-                    setIsAiSpeaking(false);
-                    setInterviewStatus('Your turn! Speak now...');
-                    startRecording();
-                });
-
-                audioRef.current.onended = () => {
-                    setIsAiSpeaking(false);
-                    URL.revokeObjectURL(url);
-                    setInterviewStatus('Your turn! Speak now...');
-                    setTimeout(() => startRecording(), 300);
-                };
-            }
-        } catch (e) {
-            console.error('Audio playback error:', e);
-            setIsAiSpeaking(false);
+    const playDialogues = (dialogues) => {
+        if (!dialogues || dialogues.length === 0) {
             setInterviewStatus('Your turn! Speak now...');
             startRecording();
+            return;
+        }
+
+        const current = dialogues[0];
+        setActiveSpeaker(current.speaker_index || 0);
+
+        if (current.audio) {
+            try {
+                const audioBytes = atob(current.audio);
+                const arrayBuffer = new ArrayBuffer(audioBytes.length);
+                const view = new Uint8Array(arrayBuffer);
+                for (let i = 0; i < audioBytes.length; i++) view[i] = audioBytes.charCodeAt(i);
+                const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+                const url = URL.createObjectURL(blob);
+
+                if (audioRef.current) {
+                    audioRef.current.src = url;
+                    setIsAiSpeaking(true);
+                    setInterviewStatus(`${PANEL_MEMBERS[current.speaker_index || 0].name} is speaking...`);
+
+                    audioRef.current.play().catch(() => {
+                        URL.revokeObjectURL(url);
+                        playDialogues(dialogues.slice(1));
+                    });
+
+                    audioRef.current.onended = () => {
+                        setIsAiSpeaking(false);
+                        URL.revokeObjectURL(url);
+                        playDialogues(dialogues.slice(1));
+                    };
+                }
+            } catch (e) {
+                console.error('Audio playback error:', e);
+                playDialogues(dialogues.slice(1));
+            }
+        } else {
+            // skip if no audio
+            playDialogues(dialogues.slice(1));
         }
     };
 
@@ -396,7 +445,7 @@ export const AIInterview = () => {
                     {/* IN PROGRESS */}
                     {/* ════════════════════════════════════════════════ */}
                     {status === 'in_progress' && (
-                        <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-[700px]">
+                        <div className="flex-1 flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[600px]">
 
                             {/* LEFT: Video & Panel */}
                             <div className="flex-1 flex flex-col gap-4">
@@ -412,8 +461,10 @@ export const AIInterview = () => {
                                     </div>
                                     <div className="flex items-center gap-6">
                                         <div className="text-right">
-                                            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Progress</span>
-                                            <span className="text-sm font-bold text-blue-600 block">Q {questionInfo.current} of {questionInfo.total}</span>
+                                            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Time Remaining</span>
+                                            <span className={`text-xl font-bold font-mono tracking-tight block ${elapsedTime > 40 * 60 ? 'text-red-600 animate-pulse' : 'text-slate-800'}`}>
+                                                {formatTimer(elapsedTime)}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -422,8 +473,8 @@ export const AIInterview = () => {
                                 <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4">
 
                                     {/* Candidate Video */}
-                                    <div className="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 shadow-sm row-span-2">
-                                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
+                                    <div className="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 border-4 border-slate-900/10 pointer-events-none rounded-2xl mix-blend-overlay" />
                                         <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white font-medium text-sm border border-white/10 flex items-center gap-2">
                                             <span>👤</span> You
@@ -440,6 +491,13 @@ export const AIInterview = () => {
                                                 </button>
                                             </div>
                                         )}
+                                        {!isRecording && !isAiSpeaking && !sending && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
+                                                <button onClick={resumeInterview} className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl shadow-2xl transition-all border border-white/20 text-lg flex items-center gap-3 animate-bounce">
+                                                    <span className="text-2xl">▶️</span> Resume Interview
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Panel Members */}
@@ -449,14 +507,14 @@ export const AIInterview = () => {
 
                                             {/* Abstract Avatar Graphic */}
                                             <div className="relative z-10 flex flex-col items-center">
-                                                <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-slate-800 border-4 flex items-center justify-center text-5xl sm:text-6xl transition-transform duration-500 ${activeSpeaker === idx && isAiSpeaking ? 'border-blue-500 scale-110 shadow-[0_0_40px_rgba(59,130,246,0.3)]' : 'border-slate-700 opacity-60'}`}>
-                                                    {member.emoji}
+                                                <div className={`w-40 h-40 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 flex items-center justify-center transition-transform duration-500 ${activeSpeaker === idx && isAiSpeaking ? 'border-blue-500 scale-105 shadow-[0_0_40px_rgba(59,130,246,0.3)]' : 'border-slate-700 opacity-60'}`}>
+                                                    <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
                                                 </div>
                                                 {/* Audio Visualizer rings if speaking */}
                                                 {activeSpeaker === idx && isAiSpeaking && (
                                                     <div className="absolute inset-0 flex items-center justify-center -z-10">
-                                                        <div className="w-32 h-32 absolute border border-blue-400 rounded-full animate-[ping_2s_ease-out_infinite] opacity-40" />
-                                                        <div className="w-40 h-40 absolute border border-blue-300 rounded-full animate-[ping_2.5s_ease-out_infinite] opacity-20" />
+                                                        <div className="w-48 h-48 absolute border border-blue-400 rounded-full animate-[ping_2s_ease-out_infinite] opacity-40" />
+                                                        <div className="w-56 h-56 absolute border border-blue-300 rounded-full animate-[ping_2.5s_ease-out_infinite] opacity-20" />
                                                     </div>
                                                 )}
                                             </div>
@@ -490,8 +548,11 @@ export const AIInterview = () => {
                                         {conversation.map((msg, i) => (
                                             msg.role === 'interviewer' ? (
                                                 <div key={i} className="flex items-start gap-3">
-                                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm">🤖</div>
+                                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm overflow-hidden border border-slate-300 shadow-sm">
+                                                        <img src={PANEL_MEMBERS[msg.speaker_index || 0].avatar} alt={PANEL_MEMBERS[msg.speaker_index || 0].name} className="w-full h-full object-cover" />
+                                                    </div>
                                                     <div className="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-sm shadow-sm max-w-[90%]">
+                                                        <p className="text-xs font-bold text-slate-500 mb-1">{PANEL_MEMBERS[msg.speaker_index || 0].name}</p>
                                                         <p className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-medium">{msg.content}</p>
                                                     </div>
                                                 </div>

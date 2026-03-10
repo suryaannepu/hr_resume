@@ -270,3 +270,53 @@ def send_rejection_email(to_email, candidate_name, job_title, company_name, feed
 
     subject = f"Application Update — {job_title} at {company_name}"
     return _send_email(to_email, subject, _base_template(content, "#374151"))
+
+
+def send_interview_report_email(to_email, candidate_name, job_title, evaluation):
+    """Send candidate their official AI Interview Performance Report."""
+    score_html = ""
+    if evaluation.get("overall_score"):
+        score = evaluation["overall_score"]
+        color = "#0cce6b" if score >= 80 else "#0284c7" if score >= 60 else "#d97706"
+        score_html = f"""
+        <div style="text-align:center;margin:20px 0;">
+          <div style="display:inline-block;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,{color}22,{color}11);border:3px solid {color};line-height:80px;font-size:28px;font-weight:800;color:{color};">
+            {score}
+          </div>
+          <p style="margin:8px 0 0 0;color:#6c7680;font-size:13px;">Overall Interview Score</p>
+        </div>
+        """
+
+    content = f"""
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:48px;margin-bottom:8px;">📊</div>
+      <h2 style="color:#1f2937;margin:0;font-size:22px;">Your AI Interview Results</h2>
+    </div>
+
+    <p style="color:#4a5460;font-size:15px;line-height:1.7;">
+      Hi {candidate_name},
+    </p>
+    <p style="color:#4a5460;font-size:15px;line-height:1.7;">
+      Thank you for completing your Official Panel AI Interview for the <strong>{job_title}</strong> position. 
+      Your interview responses have been analyzed by our AI system, and your official performance report is ready.
+    </p>
+
+    {score_html}
+
+    <div style="background:#f8fafc;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #e5e9f0;">
+      <p style="margin:0 0 8px 0;font-weight:600;color:#374151;font-size:14px;">Detailed Feedback</p>
+      <p style="color:#4a5460;font-size:15px;line-height:1.7;">{evaluation.get("detailed_feedback", "N/A")}</p>
+    </div>
+
+    <p style="color:#4a5460;font-size:15px;line-height:1.7;margin-top:20px;">
+      The recruitment team will review these results alongside your initial application and be in touch regarding the next steps in the hiring process.
+    </p>
+
+    <div style="text-align:center;margin-top:28px;">
+      <p style="color:#6c7680;font-size:14px;">Best regards,<br>
+      <strong style="color:#1f2937;">Your Hiring Team</strong></p>
+    </div>
+    """
+
+    subject = f"Your AI Interview Results — {job_title}"
+    return _send_email(to_email, subject, _base_template(content, "#0284c7"))

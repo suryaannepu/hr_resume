@@ -85,20 +85,23 @@ def start_interview(session_id: str) -> dict:
         f"**{session['job_title']}** position.\n\n"
         f"I'll be asking you a series of questions to understand your background and skills. "
         f"Take your time with each answer.\n\n"
-        f"**[{q_type}] Question 1/{len(questions)}:**\n{q_text}"
+        f"**[{q_type}] Question:**\n{q_text}"
     )
+    
+    dialogues = [{"speaker_index": 0, "message": greeting}]
 
     # Save to conversation
     sessions = _get_sessions_collection()
     sessions.update_one(
         {"_id": ObjectId(session_id)},
-        {"$push": {"conversation": {"role": "interviewer", "content": greeting, "timestamp": datetime.utcnow().isoformat()}}}
+        {
+            "$set": {"started_at": datetime.utcnow()},
+            "$push": {"conversation": {"role": "interviewer", "dialogues": dialogues, "timestamp": datetime.utcnow().isoformat()}}
+        }
     )
 
     return {
-        "message": greeting,
-        "question_number": 1,
-        "total_questions": len(questions),
+        "dialogues": dialogues,
         "status": "in_progress",
     }
 
@@ -121,59 +124,95 @@ def process_candidate_response(session_id: str, candidate_answer: str) -> dict:
         {"$push": {"conversation": {"role": "candidate", "content": candidate_answer, "timestamp": datetime.utcnow().isoformat()}}}
     )
 
-    # Generate a brief follow-up / acknowledgement using AI
-    ack_prompt = f"""You are an AI interviewer conducting a technical interview. The candidate just answered a question.
-Provide a very brief (1-2 sentence) natural acknowledgement of their answer. Be encouraging but neutral.
+    # Check 45 minute limit
+    started_at = session.get("started_at", datetime.utcnow())
+    if isinstance(started_at, str):
+        started_at = datetime.fromisoformat(started_at)
+    elapsed = (datetime.utcnow() - started_at).total_seconds() / 60.0
+    time_up = elapsed >= 45.0
 
-Question asked: {questions[current_idx].get('question', '') if current_idx < len(questions) else ''}
-Candidate's answer: {candidate_answer}
-
-Return JSON ONLY:
-- acknowledgement (string: 1-2 sentences)
-"""
-    ack_data = call_groq_llm("You are a professional AI interviewer.", ack_prompt)
-    ack_text = ack_data.get("acknowledgement", "Thank you for your answer.")
+    transcript = "\n".join(
+        f"{'Panelist' if msg['role'] == 'interviewer' else 'Candidate'}: {msg.get('content') or ' '.join(d.get('message', '') for d in msg.get('dialogues', []))}"
+        for msg in session.get("conversation", [])[-5:]  # last 5 messages for context
+    )
+    transcript += f"\nCandidate: {candidate_answer}"
 
     next_idx = current_idx + 1
 
-    if next_idx < len(questions):
-        # Ask next question
-        next_q = questions[next_idx]
-        q_text = next_q.get("question", "")
-        q_type = next_q.get("type", "Technical")
+    if not time_up:
+        # Ask next question (either from plan or generated)
+        if next_idx < len(questions):
+            next_q = questions[next_idx]
+            target_q = f"Ask this specific question from the plan: {next_q.get('question', '')} (Type: {next_q.get('type', 'Technical')})"
+        else:
+            target_q = "Generate a new, relevant follow-up question based on the candidate's previous answers or delve deeper into their technical/cultural skills."
 
-        ai_message = (
-            f"{ack_text}\n\n"
-            f"**[{q_type}] Question {next_idx + 1}/{len(questions)}:**\n{q_text}"
-        )
+        prompt = f"""You are a panel of 3 AI interviewers:
+0: Alex (Hiring Manager)
+1: Sarah (Technical Lead)
+2: David (Culture & Fit)
+
+The candidate just answered.
+1. Provide a brief, natural acknowledgment.
+2. {target_q}
+3. Choose ONE of the 3 panel members to act as the primary speaker for the next question. Make it conversational.
+
+CRITICAL INSTRUCTION: You MUST separate the conversation into an array of distinct turns for each speaker! Do NOT merge multiple panel members' dialogue into a single string!
+
+Transcript context:
+{transcript}
+
+Return JSON ONLY.
+{{
+  "dialogues": [
+    {{ "speaker_index": 0, "message": "Thanks for that answer. Sarah, would you like to take the next one?" }},
+    {{ "speaker_index": 1, "message": "Sure thing Alex! Candidate, what is your experience with..." }}
+  ]
+}}
+"""
+        response_data = call_groq_llm("You are a professional AI hiring panel.", prompt)
+        dialogues = response_data.get("dialogues", [])
+        if not dialogues:
+            dialogues = [{"speaker_index": 0, "message": "Thank you. Let's move on. Could you elaborate on your experience?"}]
 
         sessions.update_one(
             {"_id": ObjectId(session_id)},
             {
                 "$set": {"current_question_index": next_idx},
-                "$push": {"conversation": {"role": "interviewer", "content": ai_message, "timestamp": datetime.utcnow().isoformat()}}
+                "$push": {"conversation": {"role": "interviewer", "dialogues": dialogues, "timestamp": datetime.utcnow().isoformat()}}
             }
         )
 
         return {
-            "message": ai_message,
-            "question_number": next_idx + 1,
-            "total_questions": len(questions),
-            "status": "in_progress",
+            "dialogues": dialogues,
+            "status": "in_progress"
         }
     else:
         # Interview complete
-        closing = (
-            f"{ack_text}\n\n"
-            f"That concludes our interview! 🎉 Thank you for taking the time, {session['candidate_name']}. "
-            f"Your responses have been recorded and will be evaluated. You'll hear back soon."
-        )
+        closing_prompt = f"""You are an AI hiring panel (Alex, Sarah, David). The 45-minute interview is now complete.
+The candidate just gave their last answer.
+
+Provide a professional, friendly closing statement wrapping up the interview.
+CRITICAL INSTRUCTION: If multiple panel members speak, you MUST separate their dialogue into distinct objects in the array!
+
+Return JSON ONLY. You MUST return an array of "dialogues", where each element is a speaker's text.
+{{
+  "dialogues": [
+    {{ "speaker_index": 1, "message": "I think that covers my technical questions." }},
+    {{ "speaker_index": 0, "message": "Alright, that concludes our 45-minute interview! Thank you for your time today." }}
+  ]
+}}
+"""
+        response_data = call_groq_llm("You are a professional AI hiring panel.", closing_prompt)
+        dialogues = response_data.get("dialogues", [])
+        if not dialogues:
+            dialogues = [{"speaker_index": 0, "message": "That concludes our interview! Thank you for your time. Your responses have been recorded."}]
 
         sessions.update_one(
             {"_id": ObjectId(session_id)},
             {
                 "$set": {"status": "completed", "completed_at": datetime.utcnow()},
-                "$push": {"conversation": {"role": "interviewer", "content": closing, "timestamp": datetime.utcnow().isoformat()}}
+                "$push": {"conversation": {"role": "interviewer", "dialogues": dialogues, "timestamp": datetime.utcnow().isoformat()}}
             }
         )
 
@@ -181,10 +220,8 @@ Return JSON ONLY:
         _evaluate_interview(session_id)
 
         return {
-            "message": closing,
-            "question_number": len(questions),
-            "total_questions": len(questions),
-            "status": "completed",
+            "dialogues": dialogues,
+            "status": "completed"
         }
 
 
@@ -241,3 +278,14 @@ Return JSON ONLY:
             "updated_at": datetime.utcnow(),
         }}
     )
+    
+    # Send performance report via email
+    from utils.email_service import send_interview_report_email
+    app_doc = apps.find_one({"_id": ObjectId(session["application_id"])})
+    if app_doc and "candidate_email" in app_doc:
+        send_interview_report_email(
+            app_doc["candidate_email"],
+            session.get("candidate_name", "Candidate"),
+            session.get("job_title", "Position"),
+            evaluation
+        )
