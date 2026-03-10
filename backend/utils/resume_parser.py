@@ -20,10 +20,19 @@ def extract_text_from_base64(base64_string):
     import base64
     import io
     
+    # Strip whitespace and fix padding if necessary
+    base64_string = base64_string.strip()
+    padding_needed = len(base64_string) % 4
+    if padding_needed:
+        base64_string += '=' * (4 - padding_needed)
+        
     try:
         pdf_bytes = base64.b64decode(base64_string)
-        pdf_stream = io.BytesIO(pdf_bytes)
-        doc = fitz.open(stream=pdf_stream, filetype="pdf")
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        except Exception:
+            pdf_stream = io.BytesIO(pdf_bytes)
+            doc = fitz.open(stream=pdf_stream, filetype="pdf")
         text = ""
         for page in doc:
             text += page.get_text()

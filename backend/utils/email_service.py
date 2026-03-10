@@ -42,7 +42,7 @@ def _send_email(to_email, subject, html_body):
         return False
 
 
-def _base_template(content, accent_color="#0077b5"):
+def _base_template(content, accent_color="#4f46e5"):
     """Wrap content in a premium HTML email template."""
     return f"""
 <!DOCTYPE html>
@@ -51,33 +51,34 @@ def _base_template(content, accent_color="#0077b5"):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:60px 0;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 20px 40px -10px rgba(0,0,0,0.1),0 0 10px rgba(0,0,0,0.02);">
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,{accent_color},#005a87);padding:32px 40px;text-align:center;">
-              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:0.5px;">
-                ⚡ Agentic AI Hiring
+            <td style="background:linear-gradient(135deg, {accent_color}, #7c3aed);padding:40px 48px;text-align:center;">
+              <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:800;letter-spacing:-0.5px;">
+                <span style="display:inline-block;background:rgba(255,255,255,0.2);padding:8px 16px;border-radius:12px;margin-bottom:12px;font-size:24px;">✨</span><br>
+                Agentic AI Hiring
               </h1>
             </td>
           </tr>
           <!-- Body -->
           <tr>
-            <td style="padding:40px;">
+            <td style="padding:48px;">
               {content}
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e5e9f0;">
-              <p style="margin:0;color:#6c7680;font-size:13px;">
-                This is an automated message from the Agentic AI Hiring Platform.<br>
+            <td style="background:#f1f5f9;padding:32px 48px;text-align:center;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
+                This is an automated message from your Agentic AI Hiring Platform.<br>
                 Please do not reply directly to this email.
               </p>
-              <p style="margin:8px 0 0 0;color:#a0aab5;font-size:12px;">
+              <p style="margin:12px 0 0 0;color:#94a3b8;font-size:12px;font-weight:500;">
                 © {datetime.now().year} Agentic AI Hiring. All rights reserved.
               </p>
             </td>
@@ -119,6 +120,8 @@ def send_shortlist_email(to_email, candidate_name, job_title, company_name, deta
           <p style="margin:8px 0 0 0;color:#6c7680;font-size:13px;">AI Match Score</p>
         </div>
         """
+
+    company_name = company_name or "Our Company"
 
     content = f"""
     <div style="text-align:center;margin-bottom:24px;">

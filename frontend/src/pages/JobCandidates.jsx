@@ -150,7 +150,7 @@ export const JobCandidates = () => {
                       <div>
                         <AgentPipelineVisualizer status={candidate.status} agentOutputs={candidate.agent_outputs} />
                       </div>
-                    ) : candidate.status === 'processed' && candidate.committee_packet ? (
+                    ) : ['processed', 'interview_pending', 'interview_completed', 'hired', 'rejected'].includes(candidate.status) && candidate.committee_packet ? (
                       <div className="space-y-4">
                         {candidate.recommendation && (
                           <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100">
@@ -187,7 +187,7 @@ export const JobCandidates = () => {
                     <Button
                       variant="secondary"
                       onClick={() => openCandidateDetail(candidate._id)}
-                      disabled={candidate.status !== 'processed'}
+                      disabled={!['processed', 'interview_pending', 'interview_completed', 'hired', 'rejected'].includes(candidate.status)}
                       icon={BrainCircuit}
                       className="w-full justify-center"
                     >
