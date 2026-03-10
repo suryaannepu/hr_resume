@@ -79,6 +79,7 @@ export const JobCandidates = () => {
     { key: 'insights', icon: <Lightbulb size={16} />, label: 'Insights' },
     { key: 'coach', icon: <GraduationCap size={16} />, label: 'Coach Msg' },
     { key: 'interview', icon: <Mic2 size={16} />, label: 'Interview Plan' },
+    { key: 'results', icon: <Trophy size={16} />, label: 'Performance' },
     { key: 'risk', icon: <Shield size={16} />, label: 'Risk Info' },
     { key: 'committee', icon: <Scale size={16} />, label: 'Committee' },
   ];
@@ -364,6 +365,43 @@ export const JobCandidates = () => {
                       </div>
                     )}
                   </div>
+                </AgentCard>
+              )}
+
+              {activeTab === 'results' && (
+                <AgentCard icon={Trophy} title="Official Interview Performance" accentColor="brand">
+                  {selectedCandidate.interview_evaluation ? (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-lg font-bold text-slate-800">Final Assessment</h4>
+                        <Badge variant={selectedCandidate.interview_evaluation.hire_recommendation?.includes('Strong') ? 'success' : selectedCandidate.interview_evaluation.hire_recommendation?.includes('Hire') ? 'primary' : 'warning'}>
+                          {selectedCandidate.interview_evaluation.hire_recommendation || 'Pending Review'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                        {[
+                          { label: 'Overall', score: selectedCandidate.interview_evaluation.overall_score },
+                          { label: 'Communication', score: selectedCandidate.interview_evaluation.communication_score },
+                          { label: 'Technical', score: selectedCandidate.interview_evaluation.technical_score },
+                          { label: 'Problem Solving', score: selectedCandidate.interview_evaluation.problem_solving_score },
+                          { label: 'Culture Fit', score: selectedCandidate.interview_evaluation.cultural_fit_score },
+                        ].map((item, i) => (
+                          <div key={i} className="flex flex-col items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <ScoreRing score={item.score || 0} size={60} />
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-2 text-center">{item.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <h4 className="font-bold text-blue-900 mb-2 text-sm uppercase tracking-wider">Detailed Feedback</h4>
+                        <p className="text-sm text-blue-800 leading-relaxed">{selectedCandidate.interview_evaluation.detailed_feedback}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200 mt-4">
+                      No interview performance data available yet.
+                    </div>
+                  )}
                 </AgentCard>
               )}
 

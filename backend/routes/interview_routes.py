@@ -9,6 +9,8 @@ from agents.interview_handler import (
     start_interview,
     process_candidate_response,
 )
+from text_to_speech import synthesize_speech
+import base64
 
 interview_bp = Blueprint('interview', __name__)
 
@@ -44,8 +46,8 @@ def interview_status(payload, application_id):
 
     session = get_session_by_application(application_id)
     if not session:
-        # Interview available only if candidate has been selected
-        interview_available = app.get('decision') == 'selected'
+        # Interview available only after shortlisting, before rejection
+        interview_available = app.get('decision') in ['shortlisted', 'hired'] or app.get('status') in ['interview_pending', 'interview_completed', 'evaluated']
         return jsonify({
             "interview_available": interview_available,
             "session": None,
@@ -72,7 +74,7 @@ def start_ai_interview(payload, application_id):
         return jsonify({"error": "Application not found"}), 404
     if app['candidate_id'] != payload['user_id']:
         return jsonify({"error": "Unauthorized"}), 403
-    if app.get('decision') != 'selected':
+    if app.get('decision') not in ['shortlisted', 'hired'] and app.get('status') not in ['interview_pending', 'interview_completed', 'evaluated']:
         return jsonify({"error": "You have not been invited for an interview"}), 400
 
     # Check if session already exists
@@ -99,6 +101,14 @@ def start_ai_interview(payload, application_id):
     session_id = create_interview_session(application_id, interview_plan, job_title, candidate_name)
     result = start_interview(session_id)
     result["session_id"] = session_id
+    
+    # Process TTS
+    try:
+        audio_bytes = synthesize_speech(result.get("message", ""))
+        result["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+    except Exception as e:
+        print(f"⚠️ TTS failed at start: {e}")
+        result["audio"] = ""
 
     return jsonify(result), 201
 
@@ -125,4 +135,14 @@ def chat_in_interview(payload, application_id):
         return jsonify({"error": "Message cannot be empty"}), 400
 
     result = process_candidate_response(session["_id"], answer)
+    
+    # Process TTS
+    try:
+        if result.get("message"):
+            audio_bytes = synthesize_speech(result.get("message", ""))
+            result["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+    except Exception as e:
+        print(f"⚠️ TTS failed at chat: {e}")
+        result["audio"] = ""
+        
     return jsonify(result), 200
