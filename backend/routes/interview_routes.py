@@ -10,6 +10,7 @@ from agents.interview_handler import (
     process_candidate_response,
 )
 from text_to_speech import synthesize_speech
+from cheating_detector import get_detector
 import base64
 
 interview_bp = Blueprint('interview', __name__)
@@ -83,10 +84,27 @@ def start_ai_interview(payload, application_id):
         return jsonify({"error": "Interview already completed", "status": existing['status']}), 400
     if existing and existing['status'] == 'in_progress':
         # Resume existing session
+        conversation = existing.get("conversation", [])
+        
+        # Resynthesize audio for the last interviewer message if we are resuming
+        last_dialogues = []
+        if conversation and conversation[-1]["role"] == "interviewer":
+            last_dialogues = conversation[-1].get("dialogues", [])
+            try:
+                VOICES = ["en-US-GuyNeural", "en-US-JennyNeural", "en-US-ChristopherNeural"]
+                for d in last_dialogues:
+                    idx = d.get("speaker_index", 0)
+                    voice = VOICES[idx] if 0 <= idx < len(VOICES) else VOICES[0]
+                    audio_bytes = synthesize_speech(d.get("message", ""), voice=voice)
+                    d["audio"] = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else ""
+            except Exception as e:
+                print(f"⚠️ TTS failed at resume: {e}")
+
         return jsonify({
             "session_id": existing["_id"],
             "status": "resumed",
-            "conversation": existing.get("conversation", []),
+            "conversation": conversation,
+            "dialogues": last_dialogues, # Pass the real dialogues with audio back
             "current_question": existing.get("current_question_index", 0),
             "total_questions": len(existing.get("questions", [])),
         }), 200
@@ -157,3 +175,70 @@ def chat_in_interview(payload, application_id):
         print(f"⚠️ TTS failed at chat: {e}")
         
     return jsonify({"dialogues": result.get("dialogues", []), "status": result.get("status")}), 200
+
+@interview_bp.route('/<application_id>/frame', methods=['POST'])
+def process_frame(application_id):
+    """Processes a webcam frame from the candidate for cheating detection"""
+    try:
+        data = request.json
+        img_b64 = data.get("image")
+        
+        if not img_b64:
+            return jsonify({"error": "No image provided"}), 400
+            
+        detector = get_detector()
+        results = detector.process_frame(img_b64)
+        
+        return jsonify(results), 200
+        
+    except Exception as e:
+        print(f"Error processing frame: {e}")
+        return jsonify({"error": "Failed to process frame"}), 500
+
+@interview_bp.route('/<application_id>/cheat', methods=['POST'])
+@require_auth
+def submit_cheat_report(payload, application_id):
+    """Marks an interview as failed due to cheating"""
+    app = ApplicationModel.get_application(application_id)
+    if not app:
+        return jsonify({"error": "Application not found"}), 404
+    if app['candidate_id'] != payload['user_id']:
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    session = get_session_by_application(application_id)
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+        
+    data = request.json
+    flags = data.get('flags', [])
+    screenshot = data.get('screenshot', '')
+    
+    from database import get_db
+    from bson.objectid import ObjectId
+    from datetime import datetime
+    
+    db = get_db()
+    
+    # Update application
+    db['applications'].update_one(
+        {"_id": ObjectId(application_id)},
+        {"$set": {
+            "status": "rejected",
+            "decision": "rejected",
+            "cheated": True,
+            "cheat_flags": flags,
+            "cheat_screenshot": screenshot,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    # Update session
+    db['interview_sessions'].update_one(
+        {"_id": ObjectId(session['_id'])},
+        {"$set": {
+            "status": "cheated",
+            "completed_at": datetime.utcnow()
+        }}
+    )
+    
+    return jsonify({"success": True, "message": "Cheat report logged"}), 200

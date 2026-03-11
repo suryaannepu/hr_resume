@@ -6,7 +6,7 @@ ENV/
 .venv
 .env.local
 .env*.local
-
+.
 # Environment variables
 .env
 .env.development
@@ -176,3 +176,6 @@ settings_local.py
 # uploads/
 # temp_files/
 # sensitive_data/
+
+# YOLO
+yolomodels/

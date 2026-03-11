@@ -27,10 +27,14 @@ export const AIInterview = () => {
     const [interviewStatus, setInterviewStatus] = useState(''); // UI textual status
     const [silenceWarning, setSilenceWarning] = useState(0);
     const [elapsedTime, setElapsedTime] = useState(0); // in seconds
+    const [cheatingFlags, setCheatingFlags] = useState([]);
+    const [needsResume, setNeedsResume] = useState(false);
+    const [cheatData, setCheatData] = useState(null);
 
     // Refs
     const audioRef = useRef(null);
     const videoRef = useRef(null);
+    const canvasRef = useRef(null);
     const recognitionRef = useRef(null);
     const isRecordingRef = useRef(false);
     const transcriptRef = useRef('');
@@ -40,6 +44,7 @@ export const AIInterview = () => {
     const chatEndRef = useRef(null);
 
     const finalTranscriptRef = useRef('');
+    const isProcessingFrameRef = useRef(false);
 
     // Speakers for Panel
     const PANEL_MEMBERS = [
@@ -53,6 +58,13 @@ export const AIInterview = () => {
     // ── Initial Fetch ──
     useEffect(() => { checkStatus(); }, [applicationId]);
     useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [conversation]);
+
+    // Ensure webcam attaches when video element mounts
+    useEffect(() => {
+        if (status === 'in_progress' && videoRef.current && !videoRef.current.srcObject) {
+            startWebcam();
+        }
+    }, [status]);
 
     const checkStatus = async () => {
         try {
@@ -68,6 +80,7 @@ export const AIInterview = () => {
             if (d.status === 'in_progress') {
                 startWebcam();
                 setInterviewStatus('Interview resumed. Click "Resume Interview" below to continue.');
+                setNeedsResume(true);
             }
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to load interview status');
@@ -77,6 +90,7 @@ export const AIInterview = () => {
     };
 
     const resumeInterview = () => {
+        setNeedsResume(false);
         setInterviewStatus('Your turn! Speak now...');
         startRecording();
     };
@@ -98,6 +112,134 @@ export const AIInterview = () => {
         return `${m}:${s}`;
     };
 
+    // ── Cheating Detection Loop ──
+    useEffect(() => {
+        let frameInterval;
+        if (status === 'in_progress' && videoRef.current) {
+            frameInterval = setInterval(async () => {
+                captureAndAnalyzeFrame();
+            }, 1000); // 1 FPS to save backend load
+        }
+        return () => clearInterval(frameInterval);
+    }, [status]);
+
+    const captureAndAnalyzeFrame = async () => {
+        if (!videoRef.current || !canvasRef.current || videoRef.current.readyState !== 4) return;
+        if (isProcessingFrameRef.current) return;
+
+        const video = videoRef.current;
+        if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+        isProcessingFrameRef.current = true;
+
+        const overlayCanvas = canvasRef.current;
+        const overlayCtx = overlayCanvas.getContext('2d');
+
+        // Ensure the overlay strictly matches the native video resolution
+        if (overlayCanvas.width !== video.videoWidth || overlayCanvas.height !== video.videoHeight) {
+            overlayCanvas.width = video.videoWidth;
+            overlayCanvas.height = video.videoHeight;
+        }
+
+        // Downscale image to max 640px wide to prevent backend CPU overload
+        const MAX_WIDTH = 640;
+        const scale = Math.min(1, MAX_WIDTH / video.videoWidth);
+        const targetWidth = video.videoWidth * scale;
+        const targetHeight = video.videoHeight * scale;
+
+        // Extract frame using an isolated offscreen canvas so we don't paint the proxy frame to the screen
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = targetWidth;
+        offCanvas.height = targetHeight;
+        const offCtx = offCanvas.getContext('2d');
+        offCtx.drawImage(video, 0, 0, targetWidth, targetHeight);
+
+        const base64Image = offCanvas.toDataURL('image/jpeg', 0.5);
+
+        try {
+            const res = await apiClient.post(`/interview/${applicationId}/frame`, { image: base64Image });
+            const data = res.data;
+
+            // Clear visual overlay
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+            // Draw boxes scaled back up mathematically
+            if (data.boxes && data.boxes.length > 0) {
+                const invScale = 1 / scale;
+                data.boxes.forEach(box => {
+                    const x = box.x * invScale;
+                    const y = box.y * invScale;
+                    const w = box.w * invScale;
+                    const h = box.h * invScale;
+
+                    overlayCtx.strokeStyle = box.label === 'Phone' ? '#ef4444' : '#3b82f6';
+                    overlayCtx.lineWidth = 4;
+                    overlayCtx.strokeRect(x, y, w, h);
+
+                    overlayCtx.fillStyle = box.label === 'Phone' ? '#ef4444' : '#3b82f6';
+                    overlayCtx.font = "bold 24px Arial";
+                    overlayCtx.fillText(`${box.label} ${(box.confidence * 100).toFixed(0)}%`, x, y > 30 ? y - 10 : y + 30);
+                });
+            }
+
+            // Handle Flags
+            if (data.flags && data.flags.length > 0) {
+                const newFlags = data.flags;
+                setCheatingFlags(newFlags);
+
+                // If critical cheating flag triggers, immediately terminate the interview
+                if (newFlags.includes('Mobile phone detected') || newFlags.includes('Multiple persons detected')) {
+                    setCheatData({ screenshot: base64Image, flags: newFlags });
+                    setStatus('cheated');
+                    stopRecording();
+                    stopWebcam();
+                    
+                    // Post cheat violation to backend
+                    apiClient.post(`/interview/${applicationId}/cheat`, { screenshot: base64Image, flags: newFlags })
+                        .catch(err => console.error("Failed to submit cheat report:", err));
+                }
+            } else {
+                setCheatingFlags([]);
+            }
+
+        } catch (e) {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        } finally {
+            isProcessingFrameRef.current = false;
+        }
+    };
+
+
+    // ── Tab Switching Detection ──
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden && status === 'in_progress') {
+                // User switched tabs during an active interview
+                let screenshot = '';
+                if (videoRef.current && videoRef.current.readyState >= 2) {
+                    try {
+                        const off = document.createElement('canvas');
+                        off.width = videoRef.current.videoWidth || 640;
+                        off.height = videoRef.current.videoHeight || 480;
+                        off.getContext('2d').drawImage(videoRef.current, 0, 0, off.width, off.height);
+                        screenshot = off.toDataURL('image/jpeg', 0.5);
+                    } catch (e) { }
+                }
+                const flags = ['Tab switching (navigated away)'];
+                setCheatData({ screenshot, flags });
+                setStatus('cheated');
+                stopRecording();
+                stopWebcam();
+                apiClient.post(`/interview/${applicationId}/cheat`, { screenshot, flags })
+                    .catch(err => console.error("Failed to submit tab switch cheat report:", err));
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [status, applicationId]);
 
     // ── Initialize Speech Recognition ──
     useEffect(() => {
@@ -161,9 +303,9 @@ export const AIInterview = () => {
         setSilenceWarning(0);
         if (!isRecordingRef.current) return;
 
-        warningTimer1Ref.current = setTimeout(() => { if (isRecordingRef.current) setSilenceWarning(1); }, 2500);
-        warningTimer2Ref.current = setTimeout(() => { if (isRecordingRef.current) setSilenceWarning(2); }, 5000);
-        silenceTimerRef.current = setTimeout(() => { if (isRecordingRef.current) handleSilenceSubmission(); }, 7500);
+        warningTimer1Ref.current = setTimeout(() => { if (isRecordingRef.current) setSilenceWarning(1); }, 6000);
+        warningTimer2Ref.current = setTimeout(() => { if (isRecordingRef.current) setSilenceWarning(2); }, 10000);
+        silenceTimerRef.current = setTimeout(() => { if (isRecordingRef.current) handleSilenceSubmission(); }, 15000);
     };
 
     const handleSilenceSubmission = () => {
@@ -234,12 +376,15 @@ export const AIInterview = () => {
         setInterviewStatus('Setting up your Official Panel Interview...');
 
         try {
-            // Pre-request mic
-            if (recognitionRef.current) {
-                try {
-                    recognitionRef.current.start();
-                    setTimeout(() => recognitionRef.current.stop(), 100);
-                } catch (e) { }
+            // Explicitly request mic and camera to ensure permissions are granted before starting
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                stream.getAudioTracks().forEach(t => t.stop());
+                if (videoRef.current) videoRef.current.srcObject = stream;
+            } catch (mediaErr) {
+                setError('Microphone and Camera access are required to start the interview.');
+                setSending(false);
+                return;
             }
             startWebcam();
 
@@ -440,12 +585,34 @@ export const AIInterview = () => {
                         </div>
                     )}
 
+                    {/* ════════════════════════════════════════════════ */}
+                    {/* CHEATED */}
+                    {/* ════════════════════════════════════════════════ */}
+                    {status === 'cheated' && cheatData && (
+                        <div className="glass-card mt-10 max-w-2xl mx-auto py-10 px-8 text-center border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+                            <div className="text-6xl mb-6">🛑</div>
+                            <h2 className="text-3xl font-bold text-red-600 mb-2">Interview Terminated</h2>
+                            <p className="text-slate-800 font-bold mb-4 text-xl">Policy Violation Detected: {cheatData.flags.join(', ')}</p>
+                            <p className="text-slate-500 mb-8 mx-auto">
+                                The automatic cheating detection system has flagged policy violations. The interview has been immediately stopped.
+                            </p>
+                            <div className="bg-slate-900 p-2 rounded-xl inline-block border-2 border-red-500/50 mb-6 w-full">
+                                <img src={cheatData.screenshot} alt="Violation Proof" className="rounded-lg w-full h-auto object-contain max-h-[400px]" />
+                            </div>
+                            <div>
+                                <button className="btn-solid bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl font-bold shadow-md" onClick={() => navigate('/candidate-dashboard')}>
+                                    Return to Dashboard
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
 
                     {/* ════════════════════════════════════════════════ */}
                     {/* IN PROGRESS */}
                     {/* ════════════════════════════════════════════════ */}
                     {status === 'in_progress' && (
-                        <div className="flex-1 flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[600px]">
+                        <div className="flex-1 flex flex-col lg:flex-row gap-6 h-[85vh] min-h-[700px] max-h-[900px]">
 
                             {/* LEFT: Video & Panel */}
                             <div className="flex-1 flex flex-col gap-4">
@@ -473,10 +640,21 @@ export const AIInterview = () => {
                                 <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4">
 
                                     {/* Candidate Video */}
-                                    <div className="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
-                                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 border-4 border-slate-900/10 pointer-events-none rounded-2xl mix-blend-overlay" />
-                                        <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white font-medium text-sm border border-white/10 flex items-center gap-2">
+                                    <div className="relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 shadow-sm group min-h-0">
+                                        <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+                                        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10" />
+
+                                        <div className="absolute inset-0 border-4 border-slate-900/10 pointer-events-none rounded-2xl mix-blend-overlay z-20" />
+
+                                        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+                                            {cheatingFlags.map((flag, i) => (
+                                                <div key={i} className="bg-red-500/90 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 animate-pulse shadow-lg backdrop-blur-sm border border-red-400">
+                                                    ⚠️ {flag}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="absolute bottom-4 left-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white font-medium text-sm border border-white/10 flex items-center gap-2">
                                             <span>👤</span> You
                                         </div>
                                         {isRecording && (
@@ -491,8 +669,8 @@ export const AIInterview = () => {
                                                 </button>
                                             </div>
                                         )}
-                                        {!isRecording && !isAiSpeaking && !sending && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
+                                        {needsResume && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-20">
                                                 <button onClick={resumeInterview} className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl shadow-2xl transition-all border border-white/20 text-lg flex items-center gap-3 animate-bounce">
                                                     <span className="text-2xl">▶️</span> Resume Interview
                                                 </button>
@@ -502,7 +680,7 @@ export const AIInterview = () => {
 
                                     {/* Panel Members */}
                                     {PANEL_MEMBERS.map((member, idx) => (
-                                        <div key={idx} className={`relative bg-slate-900 rounded-2xl overflow-hidden border-2 transition-colors duration-300 flex items-center justify-center ${activeSpeaker === idx && isAiSpeaking ? 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)]' : 'border-slate-800'}`}>
+                                        <div key={idx} className={`relative bg-slate-900 rounded-2xl overflow-hidden border-2 transition-colors duration-300 flex items-center justify-center min-h-0 ${activeSpeaker === idx && isAiSpeaking ? 'border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.2)]' : 'border-slate-800'}`}>
                                             <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-950" />
 
                                             {/* Abstract Avatar Graphic */}

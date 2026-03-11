@@ -9,3 +9,5 @@ requests
 certifi
 edge-tts
 pydub
+ultralytics
+opencv-python

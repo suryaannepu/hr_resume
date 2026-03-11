@@ -74,9 +74,11 @@ def not_found(error):
 def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
-# Initialize app context
+# Initialize app context and eager-load YOLO models
 with app.app_context():
-    pass
+    from cheating_detector import get_detector
+    # Eagerly load the models to avoid a massive lag spike on the first candidate frame
+    get_detector()
 
 if __name__ == '__main__':
     print("\n" + "="*60)
