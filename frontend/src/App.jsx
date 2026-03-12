@@ -14,6 +14,7 @@ import { ApplyJob } from './pages/ApplyJob';
 import { CandidateDashboard } from './pages/CandidateDashboard';
 import { AIInterview } from './pages/AIInterview';
 import { VoiceInterview } from './pages/VoiceInterview';
+import ATSChecker from './pages/ATSChecker';
 
 // Styles
 import './styles.css';
@@ -141,6 +142,14 @@ export default function App() {
           element={
             <PrivateRoute requiredRole="candidate">
               <VoiceInterview />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ats-checker"
+          element={
+            <PrivateRoute requiredRole="candidate">
+              <ATSChecker />
             </PrivateRoute>
           }
         />

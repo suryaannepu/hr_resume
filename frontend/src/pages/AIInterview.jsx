@@ -29,7 +29,7 @@ export const AIInterview = () => {
     const [elapsedTime, setElapsedTime] = useState(0); // in seconds
     const [cheatingFlags, setCheatingFlags] = useState([]);
     const [needsResume, setNeedsResume] = useState(false);
-    const [cheatData, setCheatData] = useState(null);
+    const [cheatData, setCheatData] = useState(null);  // {screenshot, annotated_frame, cheat_boxes, flags}
 
     // Refs
     const audioRef = useRef(null);
@@ -172,31 +172,68 @@ export const AIInterview = () => {
                     const w = box.w * invScale;
                     const h = box.h * invScale;
 
+                    // Draw red for phone, blue for person/face
                     overlayCtx.strokeStyle = box.label === 'Phone' ? '#ef4444' : '#3b82f6';
                     overlayCtx.lineWidth = 4;
                     overlayCtx.strokeRect(x, y, w, h);
 
+                    // Draw label with contrasting background
                     overlayCtx.fillStyle = box.label === 'Phone' ? '#ef4444' : '#3b82f6';
-                    overlayCtx.font = "bold 24px Arial";
-                    overlayCtx.fillText(`${box.label} ${(box.confidence * 100).toFixed(0)}%`, x, y > 30 ? y - 10 : y + 30);
+                    overlayCtx.font = "bold 16px Arial";
+                    const label = `${box.label} ${(box.confidence * 100).toFixed(0)}%`;
+                    const textMetrics = overlayCtx.measureText(label);
+                    const labelX = x;
+                    const labelY = y > 30 ? y - 10 : y + 30;
+                    
+                    overlayCtx.fillRect(labelX, labelY - 20, textMetrics.width + 8, 22);
+                    overlayCtx.fillStyle = '#ffffff';
+                    overlayCtx.fillText(label, labelX + 4, labelY);
                 });
             }
 
-            // Handle Flags
+            // Handle Flags - Enhanced detection reporting
             if (data.flags && data.flags.length > 0) {
                 const newFlags = data.flags;
                 setCheatingFlags(newFlags);
 
-                // If critical cheating flag triggers, immediately terminate the interview
-                if (newFlags.includes('Mobile phone detected') || newFlags.includes('Multiple persons detected')) {
-                    setCheatData({ screenshot: base64Image, flags: newFlags });
+                console.warn('🚨 CHEAT FLAGS DETECTED:', newFlags);
+                
+                // IMMEDIATE termination on ANY critical flag
+                const hasCriticalViolation = newFlags.some(flag => 
+                    flag.includes('Mobile phone') || 
+                    flag.includes('Multiple persons') ||
+                    flag.includes('Tab switching') ||
+                    flag.includes('left screen')
+                );
+
+                if (hasCriticalViolation) {
+                    console.error('🛑 CRITICAL VIOLATION - Terminating interview immediately');
+                    
+                    const annotatedFrame = data.cheated_frame || base64Image;
+                    const boxes = data.cheated_boxes || data.boxes || [];
+                    
+                    setCheatData({ 
+                        screenshot: base64Image, 
+                        annotated_frame: annotatedFrame,
+                        cheat_boxes: boxes,
+                        flags: newFlags 
+                    });
                     setStatus('cheated');
                     stopRecording();
                     stopWebcam();
                     
-                    // Post cheat violation to backend
-                    apiClient.post(`/interview/${applicationId}/cheat`, { screenshot: base64Image, flags: newFlags })
-                        .catch(err => console.error("Failed to submit cheat report:", err));
+                    // Post comprehensive cheat violation to backend with full evidence
+                    try {
+                        apiClient.post(`/interview/${applicationId}/cheat`, { 
+                            screenshot: base64Image,
+                            annotated_frame: annotatedFrame,
+                            cheat_boxes: boxes,
+                            flags: newFlags,
+                            timestamp: new Date().toISOString()
+                        }).catch(err => console.error("Failed to submit cheat report:", err));
+                    } catch (err) {
+                        console.error("Error submitting cheat report:", err);
+                    }
                 }
             } else {
                 setCheatingFlags([]);
@@ -210,11 +247,13 @@ export const AIInterview = () => {
     };
 
 
-    // ── Tab Switching Detection ──
+    // ── Enhanced Tab Switching Detection & Full-Screen Enforcement ──
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden && status === 'in_progress') {
                 // User switched tabs during an active interview
+                console.warn('⚠️ TAB SWITCH DETECTED - Interview violation triggered');
+                
                 let screenshot = '';
                 if (videoRef.current && videoRef.current.readyState >= 2) {
                     try {
@@ -223,21 +262,56 @@ export const AIInterview = () => {
                         off.height = videoRef.current.videoHeight || 480;
                         off.getContext('2d').drawImage(videoRef.current, 0, 0, off.width, off.height);
                         screenshot = off.toDataURL('image/jpeg', 0.5);
-                    } catch (e) { }
+                    } catch (e) { 
+                        console.error('Failed to capture screenshot on tab switch:', e);
+                    }
                 }
-                const flags = ['Tab switching (navigated away)'];
-                setCheatData({ screenshot, flags });
+                const flags = ['Tab switching (navigated away from interview window)'];
+                setCheatData({ screenshot, annotated_frame: screenshot, flags, cheat_boxes: [] });
                 setStatus('cheated');
                 stopRecording();
                 stopWebcam();
-                apiClient.post(`/interview/${applicationId}/cheat`, { screenshot, flags })
-                    .catch(err => console.error("Failed to submit tab switch cheat report:", err));
+                apiClient.post(`/interview/${applicationId}/cheat`, { 
+                    screenshot, 
+                    annotated_frame: screenshot,
+                    cheat_boxes: [],
+                    flags 
+                }).catch(err => console.error("Failed to submit tab switch cheat report:", err));
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Prevent right-click and keyboard shortcuts during interview
+        const handleContextMenu = (e) => {
+            if (status === 'in_progress') {
+                e.preventDefault();
+                alert('Right-click is disabled during the interview');
+            }
+        };
+        
+        const handleKeyDown = (e) => {
+            if (status === 'in_progress') {
+                // Disable Alt+Tab, Ctrl+T, Ctrl+W, F12, etc.
+                if ((e.altKey && e.key === 'Tab') ||
+                    (e.ctrlKey && e.key === 't') ||
+                    (e.ctrlKey && e.key === 'w') ||
+                    (e.ctrlKey && e.key === 'n') ||
+                    e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+                    e.preventDefault();
+                    console.warn('⚠️ Keyboard shortcut blocked during interview');
+                }
+            }
+        };
+        
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('keydown', handleKeyDown);
+        
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('keydown', handleKeyDown);
         };
     }, [status, applicationId]);
 
@@ -586,21 +660,80 @@ export const AIInterview = () => {
                     )}
 
                     {/* ════════════════════════════════════════════════ */}
-                    {/* CHEATED */}
+                    {/* CHEATED - Enhanced Display with Evidence */}
                     {/* ════════════════════════════════════════════════ */}
                     {status === 'cheated' && cheatData && (
-                        <div className="glass-card mt-10 max-w-2xl mx-auto py-10 px-8 text-center border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
-                            <div className="text-6xl mb-6">🛑</div>
-                            <h2 className="text-3xl font-bold text-red-600 mb-2">Interview Terminated</h2>
-                            <p className="text-slate-800 font-bold mb-4 text-xl">Policy Violation Detected: {cheatData.flags.join(', ')}</p>
-                            <p className="text-slate-500 mb-8 mx-auto">
-                                The automatic cheating detection system has flagged policy violations. The interview has been immediately stopped.
-                            </p>
-                            <div className="bg-slate-900 p-2 rounded-xl inline-block border-2 border-red-500/50 mb-6 w-full">
-                                <img src={cheatData.screenshot} alt="Violation Proof" className="rounded-lg w-full h-auto object-contain max-h-[400px]" />
+                        <div className="glass-card mt-10 max-w-4xl mx-auto py-12 px-8 text-center border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.3)]">
+                            <div className="text-7xl mb-6 animate-bounce">🛑</div>
+                            <h2 className="text-4xl font-bold text-red-600 mb-3">Interview Terminated</h2>
+                            <p className="text-slate-800 font-bold mb-2 text-lg">Policy Violation Detected</p>
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-8 inline-block">
+                                <p className="text-red-800 font-semibold text-base">
+                                    {cheatData.flags.join(' • ')}
+                                </p>
                             </div>
+                            
+                            <div className="mb-8 space-y-4">
+                                <p className="text-slate-600 text-sm font-medium">
+                                    The automatic cheating detection system has identified policy violations and immediately stopped the interview.
+                                </p>
+                                <p className="text-slate-500 text-sm">
+                                    Your interview results will show as rejected due to integrity policy violations.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4 mb-8">
+                                <div className="text-sm font-bold text-slate-700 text-left">Evidence Documentation:</div>
+                                
+                                {/* Show annotated frame if available */}
+                                {cheatData.annotated_frame && cheatData.annotated_frame !== cheatData.screenshot && (
+                                    <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-xl">
+                                        <p className="text-xs font-bold text-amber-800 mb-2">🎥 Detection Frame (with mobile phone highlighted)</p>
+                                        <div className="bg-slate-900 p-2 rounded-lg inline-block max-w-full">
+                                            <img src={`data:image/jpeg;base64,${cheatData.annotated_frame}`} alt="Detection Evidence" className="rounded-lg max-h-[350px] object-contain" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Show original screenshot */}
+                                <div className="bg-slate-900 p-3 rounded-xl border-2 border-red-400/50 inline-block max-w-full">
+                                    <p className="text-xs font-bold text-slate-300 mb-2">📸 Original Frame</p>
+                                    <img src={cheatData.screenshot} alt="Violation Proof" className="rounded-lg max-h-[350px] object-contain" />
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-red-50 rounded-lg border border-red-200 text-left mb-8">
+                                <p className="text-xs font-bold text-red-900 mb-2">⚠️ Reason for Termination:</p>
+                                <ul className="text-xs text-red-800 space-y-1">
+                                    {cheatData.flags.map((flag, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                            <span className="text-red-600 font-bold mt-0.5">•</span>
+                                            <span>{flag}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-left mb-8">
+                                <p className="text-xs font-bold text-blue-900 mb-2">📋 What happens next:</p>
+                                <ul className="text-xs text-blue-800 space-y-1">
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-600 font-bold mt-0.5">1.</span>
+                                        <span>This interview has been recorded and flagged as a policy violation</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-600 font-bold mt-0.5">2.</span>
+                                        <span>The recruiter has been notified with full evidence documentation</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-600 font-bold mt-0.5">3.</span>
+                                        <span>Your application status is now marked as rejected</span>
+                                    </li>
+                                </ul>
+                            </div>
+
                             <div>
-                                <button className="btn-solid bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl font-bold shadow-md" onClick={() => navigate('/candidate-dashboard')}>
+                                <button className="btn-solid bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl font-bold shadow-md transition-all" onClick={() => navigate('/candidate-dashboard')}>
                                     Return to Dashboard
                                 </button>
                             </div>

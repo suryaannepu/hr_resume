@@ -10,7 +10,8 @@ import {
   Menu, 
   X,
   Sparkles,
-  PlusCircle
+  PlusCircle,
+  Zap
 } from 'lucide-react';
 import useAuthStore from '../context/authStore';
 
@@ -30,6 +31,7 @@ export const Navigation = ({ userRole }) => {
   ] : [
     { path: '/jobs', label: 'Browse Jobs', icon: Search },
     { path: '/candidate-dashboard', label: 'My Applications', icon: FileText },
+    { path: '/ats-checker', label: 'ATS Checker', icon: Zap },
   ];
 
   return (

@@ -11,3 +11,5 @@ edge-tts
 pydub
 ultralytics
 opencv-python
+cloudinary
+groq

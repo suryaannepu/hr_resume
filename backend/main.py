@@ -12,6 +12,7 @@ from routes.recruiter_routes import recruiter_bp
 from routes.interview_routes import interview_bp
 from routes.practice_routes import practice_bp
 from routes.voice_interview_routes import voice_interview_bp
+from routes.ats_routes import ats_bp
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -55,6 +56,7 @@ app.register_blueprint(recruiter_bp, url_prefix='/api/recruiter')
 app.register_blueprint(interview_bp, url_prefix='/api/interview')
 app.register_blueprint(practice_bp, url_prefix='/api/practice')
 app.register_blueprint(voice_interview_bp, url_prefix='/api/voice-interview')
+app.register_blueprint(ats_bp, url_prefix='/api/ats')
 
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])

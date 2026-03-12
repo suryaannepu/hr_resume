@@ -11,6 +11,7 @@ from agents.interview_handler import (
 )
 from text_to_speech import synthesize_speech
 from cheating_detector import get_detector
+from utils.audit_logger import log_cheating_detection
 import base64
 
 interview_bp = Blueprint('interview', __name__)
@@ -189,16 +190,46 @@ def process_frame(application_id):
         detector = get_detector()
         results = detector.process_frame(img_b64)
         
-        return jsonify(results), 200
+        # Always return detection results
+        response = {
+            "boxes": results.get("boxes", []),
+            "flags": results.get("flags", []),
+            "person_count": results.get("person_count", 0),
+            "phone_count": results.get("phone_count", 0),
+            "cheated_frame": results.get("cheated_frame"),
+            "cheated_boxes": results.get("cheated_boxes", []),
+            "detection_status": detector.get_detection_status() if hasattr(detector, 'get_detection_status') else {}
+        }
+        
+        # Log for debugging
+        if results.get("flags"):
+            print(f"⚠️ FRAME ALERT: {results['flags']} - Persons: {results.get('person_count')}, Phones: {results.get('phone_count')}")
+        
+        return jsonify(response), 200
         
     except Exception as e:
         print(f"Error processing frame: {e}")
-        return jsonify({"error": "Failed to process frame"}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Failed to process frame", "detail": str(e)}), 500
+
+@interview_bp.route('/<application_id>/debug', methods=['GET'])
+def debug_detector(application_id):
+    """Debug endpoint to check detector status"""
+    try:
+        detector = get_detector()
+        status = detector.get_detection_status()
+        return jsonify({
+            "status": "ok",
+            "detector_status": status
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @interview_bp.route('/<application_id>/cheat', methods=['POST'])
 @require_auth
 def submit_cheat_report(payload, application_id):
-    """Marks an interview as failed due to cheating"""
+    """Marks an interview as failed due to cheating with detailed evidence"""
     app = ApplicationModel.get_application(application_id)
     if not app:
         return jsonify({"error": "Application not found"}), 404
@@ -212,6 +243,8 @@ def submit_cheat_report(payload, application_id):
     data = request.json
     flags = data.get('flags', [])
     screenshot = data.get('screenshot', '')
+    annotated_frame = data.get('annotated_frame', '')  # Frame with detection boxes
+    cheat_boxes = data.get('cheat_boxes', [])  # Detection boxes
     
     from database import get_db
     from bson.objectid import ObjectId
@@ -219,17 +252,55 @@ def submit_cheat_report(payload, application_id):
     
     db = get_db()
     
-    # Update application
+    # Get detector for additional evidence
+    detector = get_detector()
+    cheating_evidence = detector.get_cheating_evidence()
+    
+    # Determine detection type for audit logging
+    detection_type = "unknown"
+    if any("phone" in flag.lower() for flag in flags):
+        detection_type = "mobile_phone_detected"
+    elif any("person" in flag.lower() or "multiple" in flag.lower() for flag in flags):
+        detection_type = "multiple_persons_detected"
+    elif any("tab" in flag.lower() or "switch" in flag.lower() for flag in flags):
+        detection_type = "tab_switching_detected"
+    elif any("left" in flag.lower() or "screen" in flag.lower() for flag in flags):
+        detection_type = "left_screen_detected"
+    
+    # Log the cheating detection with audit trail
+    max_confidence = 0
+    if cheating_evidence and cheating_evidence.get('history'):
+        max_confidence = max([h.get('confidence', 0) for h in cheating_evidence['history']], default=0)
+    
+    log_cheating_detection(
+        application_id,
+        detection_type,
+        confidence=max_confidence,
+        flags=flags,
+        consecutive=detector.consecutive_phone_frames if hasattr(detector, 'consecutive_phone_frames') else 0
+    )
+    
+    # Prepare comprehensive cheat report
+    cheat_report = {
+        "status": "rejected",
+        "decision": "rejected",
+        "cheated": True,
+        "cheat_type": "frame_analysis",
+        "cheat_flags": flags,
+        "cheat_timestamp": datetime.utcnow(),
+        "original_frame": screenshot,  # Original frame where cheat was detected
+        "annotated_frame": annotated_frame or (cheating_evidence['frame_b64'] if cheating_evidence else ''),
+        "detection_boxes": cheat_boxes or (cheating_evidence['boxes'] if cheating_evidence else []),
+        "detection_history": cheating_evidence['history'] if cheating_evidence else [],
+        "reason": ", ".join(flags) if flags else "Suspicious behavior detected",
+        "evidence_confidence": max([f.get('confidence', 0) for f in (cheating_evidence['history'] if cheating_evidence else [])], default=0),
+        "updated_at": datetime.utcnow()
+    }
+    
+    # Update application with detailed cheat report
     db['applications'].update_one(
         {"_id": ObjectId(application_id)},
-        {"$set": {
-            "status": "rejected",
-            "decision": "rejected",
-            "cheated": True,
-            "cheat_flags": flags,
-            "cheat_screenshot": screenshot,
-            "updated_at": datetime.utcnow()
-        }}
+        {"$set": cheat_report}
     )
     
     # Update session
@@ -237,8 +308,25 @@ def submit_cheat_report(payload, application_id):
         {"_id": ObjectId(session['_id'])},
         {"$set": {
             "status": "cheated",
+            "cheat_flags": flags,
+            "cheat_evidence": {
+                "original_frame": screenshot,
+                "annotated_frame": annotated_frame or (cheating_evidence['frame_b64'] if cheating_evidence else ''),
+                "boxes": cheat_boxes or (cheating_evidence['boxes'] if cheating_evidence else [])
+            },
             "completed_at": datetime.utcnow()
         }}
     )
     
-    return jsonify({"success": True, "message": "Cheat report logged"}), 200
+    print(f"🚨 VIOLATION LOGGED - Application {application_id}: {detection_type}")
+    print(f"   └─ Flags: {', '.join(flags)}")
+    print(f"   └─ Evidence Confidence: {cheat_report['evidence_confidence']:.2%}")
+    
+    return jsonify({
+        "success": True, 
+        "message": "Cheat report logged with evidence",
+        "report_id": str(application_id),
+        "detection_type": detection_type,
+        "evidence_archived": bool(annotated_frame or cheating_evidence)
+    }), 200
+
