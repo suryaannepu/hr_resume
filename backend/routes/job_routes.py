@@ -1,7 +1,7 @@
 """Job posting routes"""
 from flask import Blueprint, request, jsonify
 from auth.auth_handler import verify_token
-from models.db_models import JobModel
+from database.models import JobModel
 from bson.objectid import ObjectId
 
 jobs_bp = Blueprint('jobs', __name__)

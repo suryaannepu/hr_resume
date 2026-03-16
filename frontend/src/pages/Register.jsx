@@ -1,36 +1,69 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import useAuthStore from '../context/authStore';
 import apiClient from '../utils/api';
 import { Zap, ArrowRight, Loader2, User, Briefcase } from 'lucide-react';
 
 export const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setToken, setUser } = useAuthStore();
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: '', company_name: '' });
+  
+  // States
+  const [googleData, setGoogleData] = useState(location.state || null);
+  const [role, setRole] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const update = (k, v) => setForm({ ...form, [k]: v });
+  // If redirected from login with state, we already have google credential
+  const credential = googleData?.credential;
 
-  const handleSubmit = async (e) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setGoogleData({
+      credential: credentialResponse.credential
+    });
+    setError('');
+  };
+
+  const handleFinalizeRegistration = async (e) => {
     e.preventDefault();
-    if (!form.role) { setError('Please select a role'); return; }
-    if (form.role === 'recruiter' && !form.company_name) { setError('Company name required for recruiters'); return; }
-    setLoading(true); setError('');
+    if (!role) { setError('Please select a role'); return; }
+    if (role === 'recruiter' && !companyName) { setError('Company name required for recruiters'); return; }
+    
+    setLoading(true);
+    setError('');
+    
     try {
-      const res = await apiClient.post('/auth/register', form);
-      if (res.data.error) { setError(res.data.error); setLoading(false); return; }
-      // Auto-login
-      const loginRes = await apiClient.post('/auth/login', { email: form.email, password: form.password });
-      if (loginRes.data.token) {
-        setToken(loginRes.data.token);
-        setUser({ name: loginRes.data.name, email: loginRes.data.email, role: loginRes.data.role, company_name: loginRes.data.company_name });
-        navigate(loginRes.data.role === 'recruiter' ? '/recruiter-dashboard' : '/jobs');
+      const res = await apiClient.post('/auth/google', { 
+        credential,
+        role,
+        company_name: companyName 
+      });
+
+      if (res.data.error) {
+        setError(res.data.error);
+        setLoading(false);
+        return;
       }
+
+      // Successful registration
+      setToken(res.data.token);
+      setUser({ 
+        name: res.data.name, 
+        email: res.data.email, 
+        role: res.data.role, 
+        company_name: res.data.company_name,
+        picture: res.data.picture
+      });
+      
+      navigate(res.data.role === 'recruiter' ? '/recruiter-dashboard' : '/jobs');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -60,56 +93,92 @@ export const Register = () => {
 
           <div className="bg-white lg:border lg:border-slate-200 lg:rounded-3xl lg:p-10 lg:shadow-sm">
             <h2 className="text-2xl font-extrabold text-slate-900 mb-2 tracking-tight">Create Account</h2>
-            <p className="text-slate-600 mb-6 font-medium">Get started in less than a minute</p>
+            <p className="text-slate-600 mb-6 font-medium">Get started with your Google account</p>
 
-            {error && <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-4 shadow-sm">{error}</div>}
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-6 shadow-sm">
+                {error}
+              </div>
+            )}
 
-            {/* Role Selection */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {[
-                { value: 'candidate', icon: <User className="w-6 h-6 mb-2" />, label: 'Candidate', subtitle: 'Find your dream job' },
-                { value: 'recruiter', icon: <Briefcase className="w-6 h-6 mb-2" />, label: 'Recruiter', subtitle: 'Hire top talent' },
-              ].map(r => (
-                <button key={r.value} type="button" onClick={() => update('role', r.value)}
-                  className={`p-4 rounded-xl border-2 text-left transition-all duration-300
-                    ${form.role === r.value ? 'border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'}`}>
-                  <div className={form.role === r.value ? 'text-indigo-600' : 'text-slate-500'}>
-                    {r.icon}
-                  </div>
-                  <div className={`font-bold text-sm ${form.role === r.value ? 'text-indigo-900' : 'text-slate-700'}`}>{r.label}</div>
-                  <div className={`text-xs font-medium mt-1 ${form.role === r.value ? 'text-indigo-600' : 'text-slate-500'}`}>{r.subtitle}</div>
-                </button>
-              ))}
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Full Name</label>
-                <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="John Doe" value={form.name} onChange={e => update('name', e.target.value)} required />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Email</label>
-                <input type="email" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="you@example.com" value={form.email} onChange={e => update('email', e.target.value)} required />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Password</label>
-                <input type="password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="••••••••" value={form.password} onChange={e => update('password', e.target.value)} required minLength={6} />
-              </div>
-              {form.role === 'recruiter' && (
-                <div className="animate-fade-in-up">
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Company Name</label>
-                  <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" placeholder="Acme Inc." value={form.company_name} onChange={e => update('company_name', e.target.value)} />
+            {!credential ? (
+              <div className="flex flex-col items-center justify-center py-6">
+                <p className="text-slate-500 font-medium mb-6">Authenticate first to select your role</p>
+                <div className="w-full flex justify-center">
+                  <GoogleLogin 
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setError('Google verification failed')}
+                    useOneTap
+                    shape="pill"
+                    theme="filled_black"
+                    size="large"
+                    width="100%"
+                  />
                 </div>
-              )}
-              <button type="submit" disabled={loading || !form.role} className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 mt-2">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Create Account <ArrowRight className="w-5 h-5" /></>}
-              </button>
-            </form>
+                <p className="text-center text-sm text-slate-600 font-medium mt-10">
+                  Already have an account?{' '}
+                  <button onClick={() => navigate('/login')} className="text-indigo-600 hover:text-indigo-700 font-bold transition-colors">Sign In &rarr;</button>
+                </p>
+              </div>
+            ) : (
+              <div className="animate-fade-in">
+                <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-100 rounded-xl mb-8">
+                  {googleData.picture && <img src={googleData.picture} alt="" className="w-8 h-8 rounded-full" />}
+                  <div>
+                    <p className="text-xs font-bold text-indigo-900">Signed in as</p>
+                    <p className="text-xs text-indigo-700 font-medium">{googleData.email}</p>
+                  </div>
+                  <button 
+                    onClick={() => setGoogleData(null)}
+                    className="ml-auto text-[10px] font-bold text-indigo-600 hover:text-indigo-800"
+                  >
+                    Change Account
+                  </button>
+                </div>
 
-            <p className="text-center text-sm text-slate-600 font-medium mt-6">
-              Already have an account?{' '}
-              <button onClick={() => navigate('/login')} className="text-indigo-600 hover:text-indigo-700 font-bold transition-colors">Sign In &rarr;</button>
-            </p>
+                <p className="text-sm font-bold text-slate-700 mb-4">Select your role to complete registration</p>
+                
+                {/* Role Selection */}
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {[
+                    { value: 'candidate', icon: <User className="w-6 h-6 mb-2" />, label: 'Candidate', subtitle: 'Find your dream job' },
+                    { value: 'recruiter', icon: <Briefcase className="w-6 h-6 mb-2" />, label: 'Recruiter', subtitle: 'Hire top talent' },
+                  ].map(r => (
+                    <button key={r.value} type="button" onClick={() => setRole(r.value)}
+                      className={`p-4 rounded-xl border-2 text-left transition-all duration-300
+                        ${role === r.value ? 'border-indigo-500 bg-indigo-50 shadow-sm' : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'}`}>
+                      <div className={role === r.value ? 'text-indigo-600' : 'text-slate-500'}>
+                        {r.icon}
+                      </div>
+                      <div className={`font-bold text-sm ${role === r.value ? 'text-indigo-900' : 'text-slate-700'}`}>{r.label}</div>
+                      <div className={`text-xs font-medium mt-1 ${role === r.value ? 'text-indigo-600' : 'text-slate-500'}`}>{r.subtitle}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <form onSubmit={handleFinalizeRegistration} className="space-y-4">
+                  {role === 'recruiter' && (
+                    <div className="animate-fade-in-up">
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">Company Name</label>
+                      <input 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" 
+                        placeholder="Acme Inc." 
+                        value={companyName} 
+                        onChange={e => setCompanyName(e.target.value)} 
+                        required
+                      />
+                    </div>
+                  )}
+                  <button 
+                    type="submit" 
+                    disabled={loading || !role} 
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 mt-4"
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Complete Setup <ArrowRight className="w-5 h-5" /></>}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>

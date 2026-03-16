@@ -1,13 +1,13 @@
 """Application and resume handling routes"""
 from flask import Blueprint, request, jsonify
 from auth.auth_handler import verify_token
-from models.db_models import ApplicationModel, JobModel
+from database.models import ApplicationModel, JobModel
 from utils.resume_parser import extract_text_from_base64
 import base64
 import os
 from datetime import datetime
 
-from database import get_applications_collection
+from database.connection import get_applications_collection
 from bson.objectid import ObjectId
 
 from tasks.background import submit_task
@@ -151,9 +151,30 @@ def get_application_status(payload, application_id):
 @applications_bp.route('/candidate/all', methods=['GET'])
 @require_auth
 def get_candidate_applications(payload):
-    """Get all applications for candidate"""
+    """Get all applications for candidate - optimized response"""
     applications = ApplicationModel.get_candidate_applications(payload['user_id'])
-    return jsonify({"applications": applications}), 200
+    
+    # Further optimize response by limiting nested data
+    optimized_apps = []
+    for app in applications:
+        optimized_app = {
+            "_id": app.get('_id'),
+            "job_id": app.get('job_id'),
+            "job_title": app.get('job_title'),
+            "company_name": app.get('company_name'),
+            "match_score": app.get('match_score'),
+            "status": app.get('status'),
+            "decision": app.get('decision'),
+            "created_at": app.get('created_at'),
+            "interview_status": app.get('interview_status')
+        }
+        # Only include AI insights summary if available (not full output)
+        if "ai_insights" in app and isinstance(app["ai_insights"], dict):
+            optimized_app["summary"] = app["ai_insights"].get("summary")
+        
+        optimized_apps.append(optimized_app)
+    
+    return jsonify({"applications": optimized_apps}), 200
 
 @applications_bp.route('/job/<job_id>/list', methods=['GET'])
 @require_auth

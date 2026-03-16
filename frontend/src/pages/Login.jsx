@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import useAuthStore from '../context/authStore';
 import apiClient from '../utils/api';
 import { Zap, ArrowRight, Loader2 } from 'lucide-react';
@@ -7,24 +8,50 @@ import { Zap, ArrowRight, Loader2 } from 'lucide-react';
 export const Login = () => {
   const navigate = useNavigate();
   const { setToken, setUser } = useAuthStore();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     setError('');
     try {
-      const res = await apiClient.post('/auth/login', { email, password });
-      if (res.data.error) { setError(res.data.error); return; }
+      const res = await apiClient.post('/auth/google', { 
+        credential: credentialResponse.credential 
+      });
+
+      if (res.data.error) {
+        setError(res.data.error);
+        return;
+      }
+
+      if (res.data.needs_role) {
+        // Redirect to register with Google info to select role
+        navigate('/register', { 
+          state: { 
+            credential: credentialResponse.credential,
+            email: res.data.email,
+            name: res.data.name
+          } 
+        });
+        return;
+      }
+
+      // Successful login for existing user
       setToken(res.data.token);
-      setUser({ name: res.data.name, email: res.data.email, role: res.data.role, company_name: res.data.company_name });
+      setUser({ 
+        name: res.data.name, 
+        email: res.data.email, 
+        role: res.data.role, 
+        company_name: res.data.company_name,
+        picture: res.data.picture
+      });
+      
       navigate(res.data.role === 'recruiter' ? '/recruiter-dashboard' : '/jobs');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,27 +81,47 @@ export const Login = () => {
 
           <div className="bg-white lg:border lg:border-slate-200 lg:rounded-3xl lg:p-10 lg:shadow-sm">
             <h2 className="text-2xl font-extrabold text-slate-900 mb-2 tracking-tight">Sign In</h2>
-            <p className="text-slate-600 mb-8 font-medium">Enter your credentials to continue</p>
+            <p className="text-slate-600 mb-8 font-medium">Use your Google account to continue</p>
 
-            {error && <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-6 shadow-sm">{error}</div>}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
-                <input type="email" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-6 shadow-sm">
+                {error}
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
-                <input type="password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-              </div>
-              <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Sign In <ArrowRight className="w-5 h-5" /></>}
-              </button>
-            </form>
+            )}
 
-            <p className="text-center text-sm text-slate-600 font-medium mt-8">
-              Don't have an account?{' '}
-              <button onClick={() => navigate('/register')} className="text-blue-600 hover:text-blue-700 font-bold transition-colors">Create one &rarr;</button>
+            <div className="flex flex-col items-center justify-center py-4">
+              {loading ? (
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                  <p className="text-slate-500 font-medium">Authenticating...</p>
+                </div>
+              ) : (
+                <div className="w-full flex justify-center">
+                  <GoogleLogin 
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setError('Google sign-in failed. Please try again.')}
+                    useOneTap
+                    shape="pill"
+                    theme="filled_blue"
+                    size="large"
+                    width="100%"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200"></span>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-slate-400 font-bold">New to the platform?</span>
+              </div>
+            </div>
+
+            <p className="text-center text-sm text-slate-600 font-medium">
+              Join the future of hiring today{' '}
+              <button onClick={() => navigate('/register')} className="text-blue-600 hover:text-blue-700 font-bold transition-colors">Create account &rarr;</button>
             </p>
           </div>
         </div>

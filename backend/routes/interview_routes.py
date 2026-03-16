@@ -1,7 +1,7 @@
 """Interview routes for AI-powered candidate interviews"""
 from flask import Blueprint, request, jsonify
 from auth.auth_handler import verify_token
-from models.db_models import ApplicationModel, JobModel
+from database.models import ApplicationModel, JobModel
 from agents.interview_handler import (
     create_interview_session,
     get_session,
@@ -9,8 +9,8 @@ from agents.interview_handler import (
     start_interview,
     process_candidate_response,
 )
-from text_to_speech import synthesize_speech
-from cheating_detector import get_detector
+from services.text_to_speech import synthesize_speech
+from services.cheating_detector import get_detector
 from utils.audit_logger import log_cheating_detection
 import base64
 
@@ -198,6 +198,7 @@ def process_frame(application_id):
             "phone_count": results.get("phone_count", 0),
             "cheated_frame": results.get("cheated_frame"),
             "cheated_boxes": results.get("cheated_boxes", []),
+            "annotated_frame": results.get("annotated_frame"),
             "detection_status": detector.get_detection_status() if hasattr(detector, 'get_detection_status') else {}
         }
         
@@ -246,7 +247,7 @@ def submit_cheat_report(payload, application_id):
     annotated_frame = data.get('annotated_frame', '')  # Frame with detection boxes
     cheat_boxes = data.get('cheat_boxes', [])  # Detection boxes
     
-    from database import get_db
+    from database.connection import get_db
     from bson.objectid import ObjectId
     from datetime import datetime
     

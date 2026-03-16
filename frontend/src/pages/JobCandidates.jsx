@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import useAuthStore from '../context/authStore';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
-import { Navigation } from '../components/Navigation';
 import { Card, Button, Badge, Modal, Loading, Alert, ScoreRing, AgentCard, AgentPipelineVisualizer, Tabs, SkillBadge } from '../components/Common';
 import { BarChart3, Lightbulb, GraduationCap, Mic2, Shield, Scale, Users, BrainCircuit, Trophy, CheckCircle, XCircle, AlertTriangle, HelpCircle, ArrowLeft } from 'lucide-react';
 
 export const JobCandidates = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
-  const [candidates, setCandidates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { cachedList, setJobCandidates } = useAuthStore(state => ({
+    cachedList: state.jobCandidates[jobId] || [],
+    setJobCandidates: state.setJobCandidates
+  }));
+  const [candidates, setCandidates] = useState(cachedList);
+  const [loading, setLoading] = useState(!cachedList || cachedList.length === 0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -36,7 +40,9 @@ export const JobCandidates = () => {
   const fetchCandidates = async () => {
     try {
       const response = await apiClient.get(`/recruiter/job/${jobId}/ranked-candidates`);
-      setCandidates(response.data.candidates);
+      const fetchedCandidates = response.data.candidates;
+      setCandidates(fetchedCandidates);
+      setJobCandidates(jobId, fetchedCandidates);
     } catch (err) {
       setError('Failed to load candidates');
     } finally {
@@ -72,7 +78,7 @@ export const JobCandidates = () => {
     }
   };
 
-  if (loading) return <><Navigation userRole="recruiter" /><Loading text="Loading roster..." /></>;
+  if (loading) return <Loading text="Loading roster..." />;
 
   const agentTabs = [
     { key: 'overview', icon: <BarChart3 size={16} />, label: 'Summary' },
@@ -100,8 +106,7 @@ export const JobCandidates = () => {
 
   return (
     <>
-      <Navigation userRole="recruiter" />
-      <div className="min-h-screen bg-slate-50 py-8 px-4">
+      <div className="min-h-[80vh] bg-slate-50 py-8 px-4 rounded-3xl">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">

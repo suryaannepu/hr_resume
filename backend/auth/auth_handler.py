@@ -1,19 +1,12 @@
 """Authentication handler for user registration and login"""
-import bcrypt
 import jwt
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-from database import get_users_collection
-from config import JWT_SECRET
+from database.connection import get_users_collection
+from core.config import JWT_SECRET, GOOGLE_CLIENT_ID
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
-def hash_password(password):
-    """Hash password using bcrypt"""
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt)
-
-def verify_password(password, hashed):
-    """Verify password against hash"""
-    return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
 def create_token(user_id, role, email):
     """Create JWT token"""
@@ -25,6 +18,7 @@ def create_token(user_id, role, email):
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
+
 def verify_token(token):
     """Verify JWT token"""
     try:
@@ -35,66 +29,93 @@ def verify_token(token):
     except jwt.InvalidTokenError:
         return None
 
-def register_user(email, password, name, role, company_name=None):
-    """Register new user"""
+
+def google_login_or_register(credential, role=None, company_name=None):
+    """Handle Google OAuth login/registration.
+    
+    - If user exists: log them in (return JWT + user data).
+    - If user is new and role is provided: register them and log in.
+    - If user is new and no role: return needs_role=True so frontend can ask.
+    """
     try:
+        # Verify the Google ID token
+        idinfo = id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+
+        email = idinfo.get('email')
+        name = idinfo.get('name', '')
+        picture = idinfo.get('picture', '')
+        google_id = idinfo.get('sub')
+
+        if not email:
+            return {"error": "Google account has no email"}
+
         users = get_users_collection()
-        
-        # Check if email already exists
+
+        # Check if user already exists
         existing = users.find_one({"email": email})
+
         if existing:
-            return {"error": "Email already registered"}
-        
-        hashed_password = hash_password(password)
-        
+            # Existing user — log them in
+            token = create_token(existing["_id"], existing["role"], existing["email"])
+            return {
+                "success": True,
+                "token": token,
+                "user_id": str(existing["_id"]),
+                "email": existing["email"],
+                "name": existing.get("name", name),
+                "role": existing["role"],
+                "company_name": existing.get("company_name"),
+                "picture": existing.get("picture", picture)
+            }
+
+        # New user — need role selection
+        if not role:
+            return {
+                "needs_role": True,
+                "email": email,
+                "name": name,
+                "picture": picture
+            }
+
+        # New user with role — register them
         user_data = {
             "email": email,
-            "password_hash": hashed_password,
             "name": name,
+            "picture": picture,
+            "google_id": google_id,
             "role": role,
+            "auth_provider": "google",
             "created_at": datetime.utcnow()
         }
-        
+
         if role == "recruiter" and company_name:
             user_data["company_name"] = company_name
-        
-        result = users.insert_one(user_data)
-        
-        return {
-            "success": True,
-            "user_id": str(result.inserted_id),
-            "email": email,
-            "role": role
-        }
-    except RuntimeError as e:
-        return {"error": f"Database connection error: {str(e)}"}
-    except Exception as e:
-        return {"error": f"Registration error: {str(e)}"}
 
-def login_user(email, password):
-    """Login user"""
-    try:
-        users = get_users_collection()
-        user = users.find_one({"email": email})
-        
-        if not user or not verify_password(password, user["password_hash"]):
-            return {"error": "Invalid email or password"}
-        
-        token = create_token(user["_id"], user["role"], user["email"])
-        
+        result = users.insert_one(user_data)
+        token = create_token(result.inserted_id, role, email)
+
         return {
             "success": True,
             "token": token,
-            "user_id": str(user["_id"]),
-            "email": user["email"],
-            "name": user["name"],
-            "role": user["role"],
-            "company_name": user.get("company_name")
+            "user_id": str(result.inserted_id),
+            "email": email,
+            "name": name,
+            "role": role,
+            "company_name": company_name,
+            "picture": picture
         }
+
+    except ValueError as e:
+        return {"error": f"Invalid Google token: {str(e)}"}
     except RuntimeError as e:
         return {"error": f"Database connection error: {str(e)}"}
     except Exception as e:
-        return {"error": f"Login error: {str(e)}"}
+        return {"error": f"Google auth error: {str(e)}"}
+
 
 def get_user_by_id(user_id):
     """Get user by ID"""
@@ -102,7 +123,8 @@ def get_user_by_id(user_id):
     try:
         user = users.find_one({"_id": ObjectId(user_id)})
         if user:
-            del user["password_hash"]
+            # Remove password_hash if present (legacy users)
+            user.pop("password_hash", None)
             user["_id"] = str(user["_id"])
         return user
     except:

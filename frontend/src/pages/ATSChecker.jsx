@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import useAuthStore from '../context/authStore';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
 import { Navigation } from '../components/Navigation';
-import { Button, Alert, Loading } from '../components/Common';
+import { Button, Alert, Loading, Card, Skeleton } from '../components/Common';
 import {
     Upload,
     FileText,
@@ -20,13 +21,17 @@ const ATSChecker = () => {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
 
+    const { cachedHistory, setCachedHistory } = useAuthStore(state => ({
+        cachedHistory: state.atsHistory,
+        setCachedHistory: state.setAtsHistory
+    }));
     const [dragOver, setDragOver] = useState(false);
     const [resumeFile, setResumeFile] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!cachedHistory || cachedHistory.length === 0);
     const [error, setError] = useState('');
-    const [history, setHistory] = useState([]);
+    const [history, setHistory] = useState(cachedHistory);
     const [cloudinaryUrl, setCloudinaryUrl] = useState('');
 
     useEffect(() => {
@@ -35,6 +40,7 @@ const ATSChecker = () => {
                 const res = await apiClient.get('/ats/history');
                 if (res.data.success) {
                     setHistory(res.data.history);
+                    setCachedHistory(res.data.history);
                 }
             } catch (err) {
                 console.error('Failed to load history:', err);
@@ -99,11 +105,43 @@ const ATSChecker = () => {
         }
     };
 
-    if (loading) {
+    if (loading && (!history || history.length === 0)) {
         return (
             <>
                 <Navigation userRole="candidate" />
-                <Loading text="Loading ATS Checker..." />
+                <div className="min-h-screen bg-white">
+                    <div className="border-b border-gray-200 bg-white">
+                        <div className="max-w-6xl mx-auto px-6 py-8">
+                            <Skeleton className="h-10 w-64 mb-2" />
+                            <Skeleton className="h-4 w-96" />
+                        </div>
+                    </div>
+                    <div className="max-w-6xl mx-auto px-6 py-8">
+                        <div className="grid lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2 space-y-6">
+                                <Card padding="large" className="h-96 flex flex-col items-center justify-center border-none bg-slate-50">
+                                    <Skeleton className="w-16 h-16 rounded-full mb-6" />
+                                    <Skeleton className="h-6 w-64 mb-2" />
+                                    <Skeleton className="h-4 w-48" />
+                                </Card>
+                            </div>
+                            <div className="space-y-4">
+                                <Skeleton className="h-6 w-32 mb-4" />
+                                {[1, 2, 3].map(i => (
+                                    <Card key={i} padding="compact" className="border-none shadow-sm h-24">
+                                        <div className="flex gap-4">
+                                            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+                                            <div className="flex-1">
+                                                <Skeleton className="h-4 w-3/4 mb-2" />
+                                                <Skeleton className="h-3 w-1/2" />
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </>
         );
     }

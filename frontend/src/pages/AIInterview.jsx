@@ -163,32 +163,14 @@ export const AIInterview = () => {
             // Clear visual overlay
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-            // Draw boxes scaled back up mathematically
-            if (data.boxes && data.boxes.length > 0) {
-                const invScale = 1 / scale;
-                data.boxes.forEach(box => {
-                    const x = box.x * invScale;
-                    const y = box.y * invScale;
-                    const w = box.w * invScale;
-                    const h = box.h * invScale;
-
-                    // Draw red for phone, blue for person/face
-                    overlayCtx.strokeStyle = box.label === 'Phone' ? '#ef4444' : '#3b82f6';
-                    overlayCtx.lineWidth = 4;
-                    overlayCtx.strokeRect(x, y, w, h);
-
-                    // Draw label with contrasting background
-                    overlayCtx.fillStyle = box.label === 'Phone' ? '#ef4444' : '#3b82f6';
-                    overlayCtx.font = "bold 16px Arial";
-                    const label = `${box.label} ${(box.confidence * 100).toFixed(0)}%`;
-                    const textMetrics = overlayCtx.measureText(label);
-                    const labelX = x;
-                    const labelY = y > 30 ? y - 10 : y + 30;
-                    
-                    overlayCtx.fillRect(labelX, labelY - 20, textMetrics.width + 8, 22);
-                    overlayCtx.fillStyle = '#ffffff';
-                    overlayCtx.fillText(label, labelX + 4, labelY);
-                });
+            // Render the annotated frame (with hand landmarks, grip, warnings) from the backend
+            if (data.annotated_frame) {
+                const img = new Image();
+                img.onload = () => {
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    overlayCtx.drawImage(img, 0, 0, overlayCanvas.width, overlayCanvas.height);
+                };
+                img.src = `data:image/jpeg;base64,${data.annotated_frame}`;
             }
 
             // Handle Flags - Enhanced detection reporting
@@ -203,7 +185,8 @@ export const AIInterview = () => {
                     flag.includes('Mobile phone') || 
                     flag.includes('Multiple persons') ||
                     flag.includes('Tab switching') ||
-                    flag.includes('left screen')
+                    flag.includes('left screen') ||
+                    flag.includes('INTERVIEW TERMINATED')
                 );
 
                 if (hasCriticalViolation) {
@@ -638,9 +621,19 @@ export const AIInterview = () => {
                                 You will be interviewed by our AI Hiring Panel. Ensure your webcam and microphone are working properly.
                                 The interview will consist of {questionInfo.total || 5} questions and is conducted conversationally via voice.
                             </p>
-                            <div className="p-4 bg-amber-50 rounded-xl max-w-md mx-auto mb-8 border border-amber-200">
+                            <div className="p-4 bg-amber-50 rounded-xl max-w-lg mx-auto mb-4 border border-amber-200">
                                 <p className="text-sm text-amber-800 font-medium flex items-center gap-2 justify-center">
                                     <span>⚠️</span> Find a quiet room and speak clearly.
+                                </p>
+                            </div>
+                            <div className="p-4 bg-blue-50 rounded-xl max-w-lg mx-auto mb-8 border border-blue-200">
+                                <p className="text-sm text-blue-900 font-bold flex items-center gap-2 justify-center mb-2">
+                                    <span>✋</span> Keep Your Hands Visible at All Times
+                                </p>
+                                <p className="text-xs text-blue-700 leading-relaxed">
+                                    Our monitoring system tracks your hands throughout the interview.
+                                    Please keep both hands visible to the camera. If your hands are not detected,
+                                    you will receive warnings. <strong>Two successive warnings will automatically terminate the interview.</strong>
                                 </p>
                             </div>
                             <div className="space-y-4">

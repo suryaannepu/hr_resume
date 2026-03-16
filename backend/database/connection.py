@@ -2,7 +2,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import os
 import certifi
-from config import MONGODB_URI, DATABASE_NAME
+from core.config import MONGODB_URI, DATABASE_NAME
 import time
 
 client = None
@@ -29,6 +29,10 @@ def connect_db(retry_count=0, is_startup=False):
         client.admin.command('ping', timeoutMS=20000)
         db = client[DATABASE_NAME]
         print("✓ Connected to MongoDB successfully")
+        
+        # Create indexes for performance
+        create_indexes(db)
+        
         return db
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:
         if retry_count < max_retries:
@@ -46,6 +50,37 @@ def connect_db(retry_count=0, is_startup=False):
         if not is_startup:
             print(f"⚠️  Database error: {e}")
         return None
+
+def create_indexes(db_instance):
+    """Create essential indexes for performance"""
+    try:
+        # Users collection
+        db_instance["users"].create_index("google_id", sparse=True)
+        db_instance["users"].create_index("email", unique=True)
+        
+        # Jobs collection
+        db_instance["jobs"].create_index("recruiter_id")
+        db_instance["jobs"].create_index("status")
+        db_instance["jobs"].create_index([("created_at", -1)])
+        
+        # Applications collection
+        db_instance["applications"].create_index("job_id")
+        db_instance["applications"].create_index("candidate_id")
+        db_instance["applications"].create_index("status")
+        db_instance["applications"].create_index([("match_score", -1)])
+        db_instance["applications"].create_index([("created_at", -1)])
+        
+        # Shortlisted collection
+        db_instance["shortlisted_candidates"].create_index("job_id")
+        db_instance["shortlisted_candidates"].create_index("candidate_id")
+        
+        # ATS Checks collection
+        db_instance["ats_checks"].create_index("candidate_id")
+        db_instance["ats_checks"].create_index([("created_at", -1)])
+        
+        print("✓ Database indexes verified/created")
+    except Exception as e:
+        print(f"⚠️  Failed to create indexes: {e}")
 
 def get_db():
     """Get database instance"""

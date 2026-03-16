@@ -1,7 +1,7 @@
 """Audit logging for cheating detection events"""
 import logging
 from datetime import datetime
-from database import get_db
+from database.connection import get_db
 from bson.objectid import ObjectId
 
 # Configure logging

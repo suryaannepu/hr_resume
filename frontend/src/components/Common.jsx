@@ -1,5 +1,7 @@
-import React from 'react';
-import { Sparkles, TrendingUp, Shield, Lightbulb, GraduationCap, Mic2, Scale, FileText, Target, Users, BarChart3 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles, TrendingUp, Shield, Lightbulb, GraduationCap, Mic2, Scale, FileText, Target, Users, BarChart3, Bell, MessageSquare, PlusCircle, User, Search, LogOut, ChevronLeft, ChevronRight, Camera, Menu, LayoutDashboard, Loader2, Edit2, Check, X } from 'lucide-react';
+import apiClient from '../utils/api';
 
 /* ────────────── Button ────────────── */
 export const Button = ({ children, variant = 'primary', size = 'md', onClick, disabled = false, type = 'button', className = '', icon: Icon, ...props }) => {
@@ -22,10 +24,23 @@ export const Button = ({ children, variant = 'primary', size = 'md', onClick, di
 };
 
 /* ────────────── Card ────────────── */
-export const Card = ({ children, className = '', hover = true, padding = 'normal', ...props }) => {
-  const paddingClasses = { normal: 'p-6', compact: 'p-4', large: 'p-8' };
+export const Card = ({ children, className = '', hover = true, padding = 'normal', variant = 'light', ...props }) => {
+  const paddingClasses = { normal: 'p-6', compact: 'p-4', large: 'p-8', none: 'p-0' };
+  const variants = {
+    light: 'glass-card',
+    dark: 'bg-[#1a2234] text-white border-none shadow-xl shadow-slate-900/10',
+    ghost: 'bg-transparent border border-slate-200 shadow-none'
+  };
+  const staticVariants = {
+    light: 'glass-card-static',
+    dark: 'bg-[#1a2234] text-white border-none shadow-xl shadow-slate-900/10',
+    ghost: 'bg-transparent border border-slate-200 shadow-none'
+  };
+  
+  const baseClass = hover ? variants[variant] : staticVariants[variant];
+  
   return (
-    <div className={`${hover ? 'glass-card' : 'glass-card-static'} ${paddingClasses[padding] || paddingClasses.normal} ${className}`} {...props}>
+    <div className={`${baseClass} ${paddingClasses[padding] || paddingClasses.normal} ${className}`} {...props}>
       {children}
     </div>
   );
@@ -149,7 +164,7 @@ export const Modal = ({ isOpen, title, children, onClose, size = 'lg', icon: Ico
   if (!isOpen) return null;
   const widths = { sm: 'max-w-md', md: 'max-w-xl', lg: 'max-w-3xl', xl: 'max-w-5xl', full: 'max-w-7xl' };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className={`bg-white w-full ${widths[size]} max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl border border-slate-200`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 bg-slate-50/50 rounded-t-2xl">
           {Icon && <Icon size={20} className="text-blue-600" />}
@@ -421,20 +436,280 @@ export const InfoBox = ({ type = 'info', title, children }) => {
   );
 };
 
-/* ────────────── Timeline ────────────── */
-export const Timeline = ({ items }) => (
-  <div className="space-y-0">
-    {items.map((item, i) => (
-      <div key={i} className="flex gap-4">
-        <div className="flex flex-col items-center">
-          <div className={`w-3 h-3 rounded-full ${item.completed ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-          {i < items.length - 1 && <div className="w-0.5 flex-1 bg-slate-200 my-1" />}
+/* ────────────── Recruiter Components ────────────── */
+export const DashboardSidebar = ({ activePath, navItems, userName = "User", userCompany = "Recruiter", profilePhoto, isUploadingPhoto, onPhotoUpload, onCompanyUpdate, collapsed, onToggle, onLogout }) => {
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
+  const [companyInput, setCompanyInput] = useState(userCompany);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+  const handlePhotoClick = () => {
+    setIsPhotoModalOpen(true);
+  };
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current && !isUploadingPhoto) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file && onPhotoUpload) {
+      setIsPhotoModalOpen(false);
+      onPhotoUpload(file);
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const saveCompany = () => {
+    if (companyInput !== userCompany && onCompanyUpdate) {
+      onCompanyUpdate(companyInput);
+    }
+    setIsEditingCompany(false);
+  };
+
+  const handleCompanyKeyDown = (e) => {
+    if (e.key === 'Enter') saveCompany();
+    if (e.key === 'Escape') {
+      setCompanyInput(userCompany);
+      setIsEditingCompany(false);
+    }
+  };
+
+  return (
+    <div
+      className={`bg-[#0f172a] h-screen fixed left-0 top-0 text-slate-300 flex flex-col z-[100] transition-all duration-300 ${
+        collapsed ? 'w-[70px]' : 'w-[260px]'
+      }`}
+    >
+      {/* Logo + Toggle */}
+      <div className={`flex items-center ${collapsed ? 'justify-center p-4' : 'justify-between px-6 py-5'}`}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/recruiter-dashboard')}>
+          <div className="w-10 h-10 rounded-xl bg-[#009688] flex items-center justify-center flex-shrink-0">
+            <Sparkles className="text-white" size={20} />
+          </div>
+          {!collapsed && (
+            <div>
+              <h1 className="text-white font-bold text-base leading-tight">AI Resume Pro</h1>
+              <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Recruiter</p>
+            </div>
+          )}
         </div>
-        <div className="flex-1 pb-4">
-          <p className={`text-sm font-medium ${item.completed ? 'text-slate-800' : 'text-slate-500'}`}>{item.title}</p>
-          {item.description && <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>}
+        {!collapsed && (
+          <button
+            onClick={onToggle}
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-white transition-colors"
+            title="Collapse sidebar"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Expand button when collapsed */}
+      {collapsed && (
+        <button
+          onClick={onToggle}
+          className="mx-auto mt-2 p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-white transition-colors"
+          title="Expand sidebar"
+        >
+          <ChevronRight size={18} />
+        </button>
+      )}
+
+      {/* Profile Section */}
+      <div className={`${collapsed ? 'px-2 py-4' : 'px-5 py-4'} border-b border-slate-800`}>
+        <div className={`flex ${collapsed ? 'justify-center' : 'items-center gap-3'}`}>
+          <div 
+            className={`${collapsed ? 'w-10 h-10' : 'w-12 h-12'} rounded-full overflow-hidden border-2 border-[#009688]/40 flex-shrink-0 cursor-pointer relative group`}
+            onClick={handlePhotoClick}
+            title="Update Profile Photo"
+          >
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+            {profilePhoto ? (
+              <img src={profilePhoto} alt={userName} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#009688] to-[#00796b] flex items-center justify-center text-white font-bold text-sm">
+                {(userName || 'U').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className={`absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center transition-all`}>
+              {isUploadingPhoto ? <Loader2 size={16} className="text-white animate-spin" /> : <Camera size={16} className="text-white" />}
+            </div>
+          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1 group/company">
+              <p className="text-sm font-semibold text-white truncate">{userName}</p>
+              {isEditingCompany ? (
+                <div className="flex items-center gap-1 mt-1">
+                  <input
+                    type="text"
+                    value={companyInput}
+                    onChange={(e) => setCompanyInput(e.target.value)}
+                    onKeyDown={handleCompanyKeyDown}
+                    onBlur={saveCompany}
+                    autoFocus
+                    className="w-full bg-slate-800 text-white text-[10px] font-medium px-1.5 py-0.5 rounded border border-slate-600 focus:outline-none focus:border-[#009688]"
+                  />
+                  <button onClick={saveCompany} className="text-[#009688] hover:text-emerald-400">
+                    <Check size={12} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <p className="text-[10px] text-slate-500 font-medium truncate flex-1">{userCompany || 'Recruiter'}</p>
+                  <button 
+                    onClick={() => setIsEditingCompany(true)}
+                    className="opacity-0 group-hover/company:opacity-100 transition-opacity text-slate-500 hover:text-white p-0.5"
+                    title="Edit Company Name"
+                  >
+                    <Edit2 size={10} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-    ))}
+
+      {/* Navigation */}
+      <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} mt-4 space-y-1`}>
+        {navItems.map((item) => (
+          <button
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            title={collapsed ? item.label : undefined}
+            className={`w-full flex items-center ${collapsed ? 'justify-center' : ''} gap-3 ${collapsed ? 'px-2' : 'px-4'} py-3 rounded-xl transition-all duration-200 group ${
+              activePath === item.path
+                ? 'bg-[#009688] text-white shadow-lg shadow-[#009688]/20'
+                : 'hover:bg-slate-800/60 hover:text-white'
+            }`}
+          >
+            <item.icon size={20} className={activePath === item.path ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'} />
+            {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Logout at bottom */}
+      <div className={`${collapsed ? 'px-2 pb-4' : 'px-4 pb-4'} mt-auto space-y-2`}>
+        <button
+          onClick={onLogout}
+          title={collapsed ? 'Logout' : undefined}
+          className={`w-full ${collapsed ? 'p-3 justify-center' : 'py-3 px-4'} rounded-xl hover:bg-rose-500/10 transition-all flex items-center gap-3 group`}
+        >
+          <LogOut size={18} className="text-slate-500 group-hover:text-rose-400 flex-shrink-0" />
+          {!collapsed && <span className="font-medium text-sm text-slate-500 group-hover:text-rose-400">Logout</span>}
+        </button>
+      </div>
+
+      {/* Profile Photo Modal */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsPhotoModalOpen(false)}>
+          <div className="bg-slate-800 p-6 rounded-2xl shadow-2xl relative max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setIsPhotoModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1 bg-slate-700 hover:bg-slate-600 rounded-full"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-white text-lg font-semibold mb-6 text-center">Profile Photo</h3>
+            
+            <div className="flex justify-center mb-8">
+              <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-[#009688]/40 bg-slate-700 shadow-xl relative">
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt={userName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#009688] to-[#00796b] flex items-center justify-center text-white font-bold text-5xl">
+                    {(userName || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <Button
+              variant="primary"
+              className="w-full justify-center bg-gradient-to-r from-[#009688] to-[#00796b] hover:from-[#00796b] hover:to-[#004d40] border-none shadow-lg"
+              onClick={handleUploadClick}
+              disabled={isUploadingPhoto}
+              icon={Camera}
+            >
+              {isUploadingPhoto ? 'Uploading...' : 'Upload New Photo'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const DashboardTopNav = ({ userName, profilePhoto, onToggleSidebar }) => (
+  <div className="h-16 flex items-center justify-between px-8 border-b border-slate-100 bg-white">
+    <div className="flex items-center gap-4">
+      <button
+        onClick={onToggleSidebar}
+        className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+        title="Toggle sidebar"
+      >
+        <Menu size={20} />
+      </button>
+      <div className="relative w-80">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+        <input
+          type="text"
+          placeholder="Search candidates, jobs..."
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[#009688]/20 focus:border-[#009688]/30 transition-all"
+        />
+      </div>
+    </div>
+
+    <div className="flex items-center gap-4">
+      <button className="relative p-2 text-slate-400 hover:text-[#009688] transition-colors">
+        <Bell size={18} />
+        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+      </button>
+      <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+        <span className="text-sm font-semibold text-slate-700">{userName}</span>
+        <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#009688]/20">
+          {profilePhoto ? (
+            <img src={profilePhoto} alt={userName} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#009688] to-[#00796b] flex items-center justify-center text-white font-bold text-xs">
+              {(userName || 'U').charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   </div>
 );
+
+export const RecruiterStatCard = ({ label, value, trend, icon: Icon, color = 'blue' }) => {
+  const configs = {
+    blue: { bg: 'bg-blue-50', icon: 'text-blue-500', trendBg: 'bg-emerald-50', trendText: 'text-emerald-600' },
+    purple: { bg: 'bg-indigo-50', icon: 'text-indigo-500', trendBg: 'bg-emerald-50', trendText: 'text-emerald-600' },
+    emerald: { bg: 'bg-emerald-50', icon: 'text-emerald-500', trendBg: 'bg-emerald-50', trendText: 'text-emerald-600' },
+    amber: { bg: 'bg-amber-50', icon: 'text-amber-500', trendBg: 'bg-rose-50', trendText: 'text-rose-600' },
+  };
+  const c = configs[color] || configs.blue;
+  
+  return (
+    <Card padding="compact" hover={false} className="border-none shadow-sm h-full">
+      <div className="flex justify-between items-start mb-6">
+        <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center`}>
+          <Icon size={24} className={c.icon} />
+        </div>
+        {trend && (
+          <div className={`${trend > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} px-2 py-1 rounded-lg text-xs font-bold`}>
+            {trend > 0 ? '+' : ''}{trend}%
+          </div>
+        )}
+      </div>
+      <p className="text-sm font-semibold text-slate-500 mb-1">{label}</p>
+      <p className="text-3xl font-black text-slate-800 tracking-tight">{value}</p>
+    </Card>
+  );
+};

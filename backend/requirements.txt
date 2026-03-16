@@ -13,3 +13,6 @@ ultralytics
 opencv-python
 cloudinary
 groq
+mediapipe
+google-auth
+requests

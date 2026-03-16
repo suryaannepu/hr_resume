@@ -17,7 +17,7 @@ The interview flows naturally:
 import json
 from datetime import datetime
 from bson.objectid import ObjectId
-from database import get_db
+from database.connection import get_db
 from utils.groq_client import call_groq_llm
 
 TOTAL_QUESTIONS = 5  # Questions per interview session

@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from bson.objectid import ObjectId
 from concurrent.futures import ThreadPoolExecutor
-from database import get_applications_collection, get_jobs_collection
+from database.connection import get_applications_collection, get_jobs_collection
 from utils.groq_client import call_groq_llm, safe_int
 from utils.skill_extractor import match_resume_to_job
 from utils.similarity import calculate_skill_match_score

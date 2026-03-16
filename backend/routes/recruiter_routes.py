@@ -1,9 +1,9 @@
 """Recruiter dashboard routes"""
 from flask import Blueprint, request, jsonify
 from auth.auth_handler import verify_token
-from models.db_models import JobModel, ApplicationModel, ShortlistModel
+from database.models import JobModel, ApplicationModel, ShortlistModel
 from bson.objectid import ObjectId
-from database import get_applications_collection, get_jobs_collection
+from database.connection import get_applications_collection, get_jobs_collection, get_shortlisted_collection
 
 recruiter_bp = Blueprint('recruiter', __name__)
 
@@ -26,11 +26,38 @@ def require_auth(f):
 @recruiter_bp.route('/dashboard', methods=['GET'])
 @require_auth
 def get_dashboard(payload):
-    """Get recruiter dashboard data"""
-    # Get recruiter's jobs
-    jobs = JobModel.list_recruiter_jobs(payload['user_id'])
+    """Get recruiter dashboard data - optimized with batched queries"""
+    user_id = payload['user_id']
     
-    # Get applications for each job
+    # Get recruiter's jobs
+    jobs = JobModel.list_recruiter_jobs(user_id)
+    if not jobs:
+        return jsonify({
+            "total_jobs": 0,
+            "total_applications": 0,
+            "total_processed": 0,
+            "jobs": []
+        }), 200
+        
+    job_ids = [ObjectId(job['_id']) for job in jobs]
+    job_ids_str = [job['_id'] for job in jobs]
+    
+    # Batch fetch all applications and shortlists for all jobs
+    apps_col = get_applications_collection()
+    all_apps = list(apps_col.find({"job_id": {"$in": job_ids_str}}))
+    
+    shortlist_col = get_shortlisted_collection()
+    all_shortlists = list(shortlist_col.find({"job_id": {"$in": job_ids_str}}))
+    
+    # Organize in-memory
+    apps_by_job = {jid: [] for jid in job_ids_str}
+    for app in all_apps:
+        apps_by_job[app['job_id']].append(app)
+        
+    shortlists_by_job = {jid: [] for jid in job_ids_str}
+    for s in all_shortlists:
+        shortlists_by_job[s['job_id']].append(s)
+        
     dashboard_data = {
         "total_jobs": len(jobs),
         "jobs": []
@@ -40,29 +67,41 @@ def get_dashboard(payload):
     total_processed = 0
     
     for job in jobs:
-        applications = ApplicationModel.get_job_applications(job['_id'])
-        # Count all applications that have finished AI processing
-        processed = [app for app in applications if app.get('status') not in ('uploaded', 'processing')]
+        jid = job['_id']
+        job_apps = apps_by_job.get(jid, [])
+        job_shortlist = shortlists_by_job.get(jid, [])
         
-        # Dashboard preview only shows top candidates who are not finally decided (not hired or rejected)
+        # Count processed
+        processed = [app for app in job_apps if app.get('status') not in ('uploaded', 'processing')]
+        
+        # Dashboard preview
         preview_apps = [app for app in processed if app.get('decision') not in ('rejected', 'hired')]
         
-        shortlist = ShortlistModel.get_job_shortlist(job['_id'])
-        approved = [s for s in shortlist if s.get('approved_by_recruiter')]
+        preview_apps_limited = []
+        for app in preview_apps[:5]:
+            preview_apps_limited.append({
+                "_id": str(app.get('_id')),
+                "candidate_name": app.get('candidate_name'),
+                "match_score": app.get('match_score'),
+                "status": app.get('status'),
+                "decision": app.get('decision')
+            })
+            
+        approved_count = len([s for s in job_shortlist if s.get('approved_by_recruiter')])
         
         job_data = {
-            "job_id": job['_id'],
+            "job_id": jid,
             "job_title": job['job_title'],
-            "total_applications": len(applications),
+            "total_applications": len(job_apps),
             "processed_applications": len(processed),
-            "shortlist_count": len(shortlist),
-            "approved_count": len(approved),
-            "applications": preview_apps[:10],  # Last 10 active/shortlisted candidates for preview
+            "shortlist_count": len(job_shortlist),
+            "approved_count": approved_count,
+            "applications": preview_apps_limited,
             "ai_insights": job.get("ai_insights")
         }
         
         dashboard_data["jobs"].append(job_data)
-        total_applications += len(applications)
+        total_applications += len(job_apps)
         total_processed += len(processed)
     
     dashboard_data["total_applications"] = total_applications
@@ -339,7 +378,7 @@ def candidate_decision(payload, job_id, application_id):
 
     # Send email
     # Get User's registered email
-    from database import get_users_collection
+    from database.connection import get_users_collection
     from bson.objectid import ObjectId
     users_col = get_users_collection()
     candidate_user = users_col.find_one({"_id": ObjectId(app.get('candidate_id'))})

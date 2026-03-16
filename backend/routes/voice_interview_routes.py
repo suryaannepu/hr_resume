@@ -6,15 +6,15 @@ and session management.
 """
 from flask import Blueprint, request, jsonify, Response
 from auth.auth_handler import verify_token
-from voice_interview_handler import (
+from services.voice_interview_handler import (
     create_voice_session,
     get_voice_session,
     generate_question,
     evaluate_answer,
     end_voice_session,
 )
-from text_to_speech import synthesize_speech
-from speech_to_text import transcribe_audio
+from services.text_to_speech import synthesize_speech
+from services.speech_to_text import transcribe_audio
 
 voice_interview_bp = Blueprint('voice_interview', __name__)
 

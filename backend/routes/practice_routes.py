@@ -1,7 +1,8 @@
 """Interview Practice routes – on-demand question generation & answer scoring."""
 from flask import Blueprint, request, jsonify
+from core.config import MONGODB_URI
 from auth.auth_handler import verify_token
-from models.db_models import ApplicationModel, JobModel
+from database.models import ApplicationModel, JobModel
 from agents.practice_agent import generate_practice_question, evaluate_practice_answer
 
 practice_bp = Blueprint('practice', __name__)

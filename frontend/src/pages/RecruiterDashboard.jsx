@@ -1,52 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
-import { Navigation } from '../components/Navigation';
+import useAuthStore from '../context/authStore';
 import {
   Card,
   Button,
   Badge,
-  ScoreBar,
   Loading,
   Alert,
-  ScoreRing,
   SectionHeader,
-  StatWidget,
+  ScoreRing,
+  RecruiterStatCard,
+  Skeleton,
   EmptyState,
-  InfoBox,
-  Tabs,
-  AgentCard,
-  ProgressBar,
-  Skeleton
+  StatWidget
 } from '../components/Common';
 import {
-  LayoutDashboard,
+  Sparkles,
+  Search,
+  PlusCircle,
+  Bell,
+  MessageSquare,
   Briefcase,
   Users,
-  FileText,
-  TrendingUp,
-  Sparkles,
-  Zap,
-  Trophy,
-  Target,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Search,
-  Filter,
   BarChart3,
-  Award,
+  Clock,
   ArrowRight,
+  TrendingUp,
+  MapPin,
+  CheckCircle,
+  XCircle,
   MoreVertical,
   Lightbulb,
-  XCircle,
+  Zap,
+  Target,
+  Trophy,
+  Star,
   Eye,
-  Crown,
-  Medal,
-  Star
+  FileText,
+  AlertCircle,
+  LayoutDashboard
 } from 'lucide-react';
 
-// Job Card Component
+/* ═══════════════════════════════════════════
+   THEMED JOB CARD — Full Functionality
+   ═══════════════════════════════════════════ */
 const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDecision, onViewCandidates, processing, rankings, insights }) => {
   const unprocessed = job.total_applications - job.processed_applications;
   const isProcessing = processing[job.job_id];
@@ -61,12 +59,12 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-none shadow-sm">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <Briefcase size={24} className="text-blue-600" />
+          <div className="w-12 h-12 rounded-xl bg-[#e0f2f1] flex items-center justify-center flex-shrink-0">
+            <Briefcase size={24} className="text-[#009688]" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-800">{job.job_title}</h3>
@@ -96,8 +94,8 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
           <p className="text-2xl font-bold text-slate-800">{job.total_applications}</p>
           <p className="text-xs text-slate-500">Total</p>
         </div>
-        <div className="bg-emerald-50 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{job.processed_applications}</p>
+        <div className="bg-[#e0f2f1] rounded-xl p-3 text-center">
+          <p className="text-2xl font-bold text-[#009688]">{job.processed_applications}</p>
           <p className="text-xs text-slate-500">Processed</p>
         </div>
         <div className="bg-blue-50 rounded-xl p-3 text-center">
@@ -113,7 +111,7 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
       {/* Score Distribution */}
       <div className="mb-6 p-4 bg-slate-50 rounded-xl">
         <p className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-          <BarChart3 size={16} className="text-blue-600" />
+          <BarChart3 size={16} className="text-[#009688]" />
           Candidate Score Distribution
         </p>
         <div className="grid grid-cols-4 gap-2">
@@ -136,9 +134,9 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
 
       {/* AI Insights Panel */}
       {jobInsight && (
-        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#e0f2f1] to-[#e8f5e9] border border-[#009688]/20">
           <div className="flex items-center gap-2 mb-3">
-            <Lightbulb size={18} className="text-blue-600" />
+            <Lightbulb size={18} className="text-[#009688]" />
             <span className="font-semibold text-slate-800">AI Executive Insights</span>
             {jobInsight.pool_quality && (
               <Badge variant={
@@ -154,8 +152,8 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
             <>
               <p className="text-sm text-slate-600 mb-3">{jobInsight.executive_summary}</p>
               {jobInsight.top_recommendation && (
-                <div className="flex items-start gap-2 bg-white rounded-lg p-3 border border-blue-100">
-                  <Sparkles size={14} className="text-blue-500 mt-0.5" />
+                <div className="flex items-start gap-2 bg-white rounded-lg p-3 border border-[#009688]/10">
+                  <Sparkles size={14} className="text-[#009688] mt-0.5" />
                   <p className="text-sm text-slate-700">{jobInsight.top_recommendation}</p>
                 </div>
               )}
@@ -189,7 +187,7 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
 
           <div className="space-y-2">
             {jobRanking.ranking.ranked_candidates.slice(0, 5).map((c, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-300 transition-colors">
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-200 hover:border-[#009688]/30 transition-colors">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-amber-100 text-amber-700' :
                   i === 1 ? 'bg-slate-200 text-slate-700' :
                     i === 2 ? 'bg-orange-100 text-orange-700' :
@@ -207,8 +205,8 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
           </div>
 
           {jobRanking.shortlist?.shortlist_reasoning && (
-            <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-              <p className="text-xs text-emerald-700">
+            <div className="mt-4 p-3 rounded-lg bg-[#e0f2f1] border border-[#009688]/20">
+              <p className="text-xs text-[#00796b]">
                 <span className="font-semibold">Shortlist Reasoning:</span> {jobRanking.shortlist.shortlist_reasoning}
               </p>
             </div>
@@ -277,14 +275,15 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200">
+      {/* Action Buttons — Themed */}
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-slate-200">
         {unprocessed > 0 && (
           <Button
             variant="warning"
             onClick={() => onProcess(job.job_id)}
             disabled={isProcessing}
             icon={Zap}
+            className="rounded-full px-6 shadow-sm hover:shadow-md"
           >
             {isProcessing ? 'Processing...' : `Process ${unprocessed}`}
           </Button>
@@ -296,6 +295,7 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
               onClick={() => onAIRank(job.job_id)}
               disabled={processing[`rank_${job.job_id}`]}
               icon={Trophy}
+              className="rounded-full px-6 shadow-sm hover:shadow-md bg-gradient-to-r from-[#009688] to-[#00796b] border-none"
             >
               {processing[`rank_${job.job_id}`] ? 'Ranking...' : 'AI Rank & Shortlist'}
             </Button>
@@ -304,6 +304,7 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
               onClick={() => onAIInsights(job.job_id)}
               disabled={processing[`insight_${job.job_id}`]}
               icon={Lightbulb}
+              className="rounded-full px-6 shadow-sm hover:shadow-md"
             >
               {processing[`insight_${job.job_id}`] ? 'Analyzing...' : 'AI Insights'}
             </Button>
@@ -312,15 +313,17 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
               onClick={() => onAutoShortlist(job.job_id)}
               disabled={isProcessing}
               icon={Target}
+              className="rounded-full px-6 shadow-sm hover:shadow-md"
             >
               Auto-Shortlist (70%+)
             </Button>
           </>
         )}
         <Button
-          variant="secondary"
+          variant="ghost"
           onClick={() => onViewCandidates(job.job_id)}
           icon={Users}
+          className="rounded-full px-6 hover:bg-slate-100 text-slate-600"
         >
           View All Candidates
         </Button>
@@ -329,7 +332,9 @@ const JobCard = ({ job, onProcess, onAutoShortlist, onAIRank, onAIInsights, onDe
   );
 };
 
-// Portfolio Summary Component
+/* ═══════════════════════════════════════════
+   THEMED PORTFOLIO SUMMARY
+   ═══════════════════════════════════════════ */
 const PortfolioSummary = ({ dashboard }) => {
   if (!dashboard?.jobs?.length) return null;
 
@@ -345,7 +350,7 @@ const PortfolioSummary = ({ dashboard }) => {
   ];
 
   return (
-    <Card className="mb-8 border-l-4 border-l-blue-500">
+    <Card className="border-none shadow-sm border-l-4 border-l-[#009688]">
       <SectionHeader
         title="Portfolio Performance"
         subtitle="Overview of all your job postings and candidate quality"
@@ -354,7 +359,7 @@ const PortfolioSummary = ({ dashboard }) => {
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className={`${scoreTiers[0].bg} rounded-xl p-4 text-center`}>
-          <p className={`text-3xl font-bold ${scoreTiers[0].color}`}>{totalAvgScore}%</p>
+          <p className={`text-3xl font-bold text-[#009688]`}>{totalAvgScore}%</p>
           <p className="text-xs text-slate-600 mt-1">Avg Score</p>
         </div>
 
@@ -372,11 +377,17 @@ const PortfolioSummary = ({ dashboard }) => {
   );
 };
 
-// Main Recruiter Dashboard Component
+/* ═══════════════════════════════════════════
+   MAIN RECRUITER DASHBOARD
+   ═══════════════════════════════════════════ */
 export const RecruiterDashboard = () => {
   const navigate = useNavigate();
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { dashboard: cachedData, setDashboardData } = useAuthStore(state => ({ 
+    dashboard: state.dashboardData, 
+    setDashboardData: state.setDashboardData 
+  }));
+  const [dashboard, setDashboard] = useState(cachedData);
+  const [loading, setLoading] = useState(!cachedData);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [processing, setProcessing] = useState({});
@@ -385,7 +396,7 @@ export const RecruiterDashboard = () => {
 
   useEffect(() => {
     fetchDashboard();
-    const interval = setInterval(fetchDashboard, 5000);
+    const interval = setInterval(fetchDashboard, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -394,6 +405,7 @@ export const RecruiterDashboard = () => {
       const response = await apiClient.get('/recruiter/dashboard');
       const enrichedData = enrichDashboardWithScores(response.data);
       setDashboard(enrichedData);
+      setDashboardData(enrichedData);
       setError('');
     } catch (err) {
       setError('Failed to load dashboard');
@@ -413,11 +425,9 @@ export const RecruiterDashboard = () => {
         fair: scores.filter(s => s >= 40 && s < 60).length,
         poor: scores.filter(s => s < 40).length
       };
-
       const topCandidatesList = visibleApps
         .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
         .slice(0, 3);
-
       return { ...job, avgScore, scoreBreakdown, topCandidates: topCandidatesList };
     }) || [];
     return { ...data, jobs: jobsWithScores };
@@ -489,152 +499,163 @@ export const RecruiterDashboard = () => {
 
   const pendingCount = dashboard?.jobs?.reduce((sum, job) => sum + (job.total_applications - job.processed_applications), 0) || 0;
 
+  /* ── Loading State ── */
   if (loading) {
     return (
-      <>
-        <Navigation userRole="recruiter" />
-        <div className="min-h-screen bg-slate-50 py-8 px-4">
-          <div className="max-w-7xl mx-auto space-y-8 animate-fade-in-up">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <Skeleton className="h-8 w-64 mb-2" />
-                <Skeleton className="h-4 w-48" />
-              </div>
-              <Skeleton className="h-12 w-40" />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="dashboard-widget">
-                  <Skeleton className="h-12 w-12 rounded-xl mb-4" />
-                  <Skeleton className="h-8 w-24 mb-2" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              ))}
-            </div>
-
-            <Card className="mb-8 border-l-4 border-l-slate-300">
-              <Skeleton className="h-6 w-48 mb-6" />
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <Skeleton key={i} className="h-24 w-full rounded-xl" />
-                ))}
-              </div>
+      <div className="space-y-8 animate-fade-in-up">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="border-none shadow-sm">
+              <Skeleton className="h-12 w-12 rounded-xl mb-4" />
+              <Skeleton className="h-8 w-24 mb-2" />
+              <Skeleton className="h-4 w-32" />
             </Card>
-
-            <div className="space-y-6">
-              {[1, 2].map(i => (
-                <Card key={i} className="h-64">
-                  <div className="flex justify-between">
-                    <div className="flex gap-4">
-                      <Skeleton className="w-12 h-12 rounded-xl" />
-                      <div>
-                        <Skeleton className="w-48 h-6 mb-2" />
-                        <Skeleton className="w-32 h-4" />
-                      </div>
-                    </div>
-                    <Skeleton className="w-14 h-14 rounded-full" circle />
-                  </div>
-                  <div className="grid grid-cols-4 gap-4 mt-8">
-                    {[1, 2, 3, 4].map(j => <Skeleton key={j} className="h-16 rounded-xl" />)}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
-      </>
+        <Card className="border-none shadow-sm">
+          <Skeleton className="h-6 w-48 mb-6" />
+          <div className="grid grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+        </Card>
+        <div className="space-y-6">
+          {[1, 2].map(i => (
+            <Card key={i}>
+              <Skeleton className="h-6 w-48 mb-4" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </Card>
+          ))}
+        </div>
+      </div>
     );
   }
 
+  /* ── Main Render ── */
   return (
-    <>
-      <Navigation userRole="recruiter" />
-      <div className="min-h-screen bg-slate-50 py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <SectionHeader
-            title="Recruiter Dashboard"
-            subtitle={pendingCount > 0 ? `${pendingCount} applications awaiting AI processing` : 'All caught up!'}
-            icon={LayoutDashboard}
-            action={
-              <Button variant="primary" onClick={() => navigate('/post-job')} icon={Briefcase}>
-                Post New Job
-              </Button>
-            }
-          />
+    <div className="space-y-8">
+      {/* Alerts */}
+      {error && <Alert type="danger" message={error} onClose={() => setError('')} />}
+      {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
 
-          {error && <Alert type="danger" message={error} onClose={() => setError('')} />}
-          {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
+      {/* Stats Grid — Themed */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        <RecruiterStatCard
+          label="Active Jobs"
+          value={dashboard?.total_jobs || 0}
+          trend={3}
+          icon={Briefcase}
+          color="blue"
+        />
+        <RecruiterStatCard
+          label="Total Applications"
+          value={dashboard?.total_applications || 0}
+          trend={12}
+          icon={Users}
+          color="purple"
+        />
+        <RecruiterStatCard
+          label="Processed"
+          value={dashboard?.total_processed || 0}
+          trend={8}
+          icon={CheckCircle}
+          color="emerald"
+        />
+        <RecruiterStatCard
+          label="Pending Review"
+          value={pendingCount}
+          trend={pendingCount > 0 ? -2 : 0}
+          icon={Clock}
+          color="amber"
+        />
+      </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <StatWidget
-              value={dashboard?.total_jobs || 0}
-              label="Active Jobs"
-              icon={Briefcase}
-              color="blue"
-            />
-            <StatWidget
-              value={dashboard?.total_applications || 0}
-              label="Total Applications"
-              icon={FileText}
-              color="violet"
-            />
-            <StatWidget
-              value={dashboard?.total_processed || 0}
-              label="Processed"
-              icon={CheckCircle}
-              color="emerald"
-            />
-            <StatWidget
-              value={pendingCount}
-              label="Pending"
-              icon={Clock}
-              color={pendingCount > 0 ? 'amber' : 'emerald'}
-            />
-          </div>
-
-          {/* Portfolio Performance */}
+      {/* Middle Section: Portfolio + AI Insight */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
           <PortfolioSummary dashboard={dashboard} />
+        </div>
 
-          {/* Jobs List */}
-          <div>
-            <SectionHeader
-              title="Active Jobs"
-              subtitle="Manage your job postings and review AI-powered candidate analysis"
-              icon={Briefcase}
-            />
+        {/* AI Insight of the Day — Premium Dark Card */}
+        <div className="bg-[#0f172a] rounded-3xl p-8 text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#009688]/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-[#009688]/20 transition-colors"></div>
 
-            {dashboard?.jobs && dashboard.jobs.length > 0 ? (
-              <div className="space-y-6">
-                {dashboard.jobs.map(job => (
-                  <JobCard
-                    key={job.job_id}
-                    job={job}
-                    onProcess={handleProcessApplications}
-                    onAutoShortlist={handleAutoShortlist}
-                    onAIRank={handleAIRank}
-                    onAIInsights={handleAIInsights}
-                    onDecision={handleDecision}
-                    onViewCandidates={handleViewCandidates}
-                    processing={processing}
-                    rankings={rankings}
-                    insights={insights}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={Briefcase}
-                title="No jobs posted yet"
-                description="Create your first job posting to start receiving AI-analyzed candidate applications."
-                action={<Button onClick={() => navigate('/post-job')} icon={Briefcase}>Create First Job</Button>}
-              />
-            )}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-[#009688] flex items-center justify-center shadow-lg shadow-[#009688]/20">
+              <Zap size={20} className="text-white" />
+            </div>
+            <div>
+              <h4 className="font-black text-sm uppercase tracking-widest text-[#009688]">AI Insight</h4>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Daily Optimization</p>
+            </div>
           </div>
+
+          <h3 className="text-xl font-bold leading-tight mb-4">
+            {pendingCount > 0 ? (
+              <>You have <span className="text-[#009688]">{pendingCount} unprocessed</span> applications awaiting AI analysis.</>
+            ) : (
+              <>All caught up! Your candidate pipeline is <span className="text-[#009688]">fully analyzed</span>.</>
+            )}
+          </h3>
+
+          <p className="text-sm text-slate-400 mb-8 leading-relaxed">
+            {pendingCount > 0
+              ? "Process pending applications to unlock AI-powered ranking, shortlisting, and executive insights for each role."
+              : "Use AI Rank & Shortlist on your jobs to find the best candidates automatically."
+            }
+          </p>
+
+          <button
+            onClick={() => navigate('/post-job')}
+            className="flex items-center gap-2 group/btn"
+          >
+            <span className="text-xs font-black uppercase tracking-widest text-[#009688]">Post New Job</span>
+            <ArrowRight size={16} className="text-[#009688] group-hover/btn:translate-x-1 transition-transform" />
+          </button>
         </div>
       </div>
-    </>
+
+      {/* Active Jobs — Full Functionality */}
+      <div>
+        <SectionHeader
+          title="Active Jobs"
+          subtitle="Manage your job postings and review AI-powered candidate analysis"
+          icon={Briefcase}
+          action={
+            <Button variant="primary" onClick={() => navigate('/post-job')} icon={PlusCircle}>
+              Post New Job
+            </Button>
+          }
+        />
+
+        {dashboard?.jobs && dashboard.jobs.length > 0 ? (
+          <div className="space-y-6">
+            {dashboard.jobs.map(job => (
+              <JobCard
+                key={job.job_id}
+                job={job}
+                onProcess={handleProcessApplications}
+                onAutoShortlist={handleAutoShortlist}
+                onAIRank={handleAIRank}
+                onAIInsights={handleAIInsights}
+                onDecision={handleDecision}
+                onViewCandidates={handleViewCandidates}
+                processing={processing}
+                rankings={rankings}
+                insights={insights}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Briefcase}
+            title="No jobs posted yet"
+            description="Create your first job posting to start receiving AI-analyzed candidate applications."
+            action={<Button onClick={() => navigate('/post-job')} icon={PlusCircle}>Create First Job</Button>}
+          />
+        )}
+      </div>
+    </div>
   );
 };

@@ -38,6 +38,11 @@ const useAuthStore = create((set) => {
     user: initialUser,
     token: initialToken,
     isAuthenticated: initiallyAuthenticated,
+    dashboardData: null,
+    candidateApplications: [],
+    allJobs: [],
+    atsHistory: [],
+    jobCandidates: {}, // {jobId: [candidates]}
 
     // Initialize auth from localStorage (call this on app mount)
     initializeAuth: () => {
@@ -79,8 +84,20 @@ const useAuthStore = create((set) => {
       } catch (error) {
         console.error('Failed to remove auth data:', error);
       }
-      set({ token: null, user: null, isAuthenticated: false });
+      set({ 
+        token: null, user: null, isAuthenticated: false, 
+        dashboardData: null, candidateApplications: [], 
+        allJobs: [], atsHistory: [], jobCandidates: {} 
+      });
     },
+
+    setDashboardData: (data) => set({ dashboardData: data }),
+    setCandidateApplications: (data) => set({ candidateApplications: data }),
+    setAllJobs: (data) => set({ allJobs: data }),
+    setAtsHistory: (data) => set({ atsHistory: data }),
+    setJobCandidates: (jobId, candidates) => set((state) => ({
+      jobCandidates: { ...state.jobCandidates, [jobId]: candidates }
+    })),
   };
 });
 

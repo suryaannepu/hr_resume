@@ -28,5 +28,9 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 
+# Google OAuth
+GOOGLE_CLIENT_ID = os.getenv("CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("CLIENT_SECRET", "")
+
 # Port
 PORT = int(os.getenv("PORT", 5000))

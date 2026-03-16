@@ -78,3 +78,29 @@ def delete_resume_from_cloudinary(resource_id: str) -> bool:
     except Exception as e:
         print(f"Error deleting from Cloudinary: {e}")
         return False
+
+
+def upload_profile_photo(base64_data: str, user_id: str) -> dict:
+    """Upload profile photo from base64 data to Cloudinary"""
+    try:
+        public_id = f"profile_photos/{user_id}/{datetime.now().timestamp()}"
+
+        result = cloudinary.uploader.upload(
+            f"data:image/jpeg;base64,{base64_data}",
+            public_id=public_id,
+            resource_type="image",
+            folder="profile_photos",
+            overwrite=True,
+            transformation=[
+                {"width": 256, "height": 256, "crop": "fill", "gravity": "face"}
+            ]
+        )
+
+        return {
+            "success": True,
+            "photo_url": result.get("secure_url"),
+            "resource_id": result.get("public_id"),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+

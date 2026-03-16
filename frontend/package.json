@@ -4,6 +4,7 @@
   "description": "Agentic AI Hiring Platform",
   "private": true,
   "dependencies": {
+    "@react-oauth/google": "^0.13.4",
     "axios": "^1.5.0",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",

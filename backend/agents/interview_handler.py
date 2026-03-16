@@ -8,7 +8,7 @@ interviewer asks role-specific questions.
 import json
 from datetime import datetime
 from bson.objectid import ObjectId
-from database import get_db
+from database.connection import get_db
 from utils.groq_client import call_groq_llm
 
 
@@ -266,7 +266,7 @@ Return JSON ONLY:
     )
 
     # Also update the application with interview results
-    from database import get_applications_collection
+    from database.connection import get_applications_collection
     apps = get_applications_collection()
     apps.update_one(
         {"_id": ObjectId(session["application_id"])},

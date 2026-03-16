@@ -1,7 +1,7 @@
 """MongoDB models and operations"""
 from datetime import datetime
 from bson.objectid import ObjectId
-from database import get_users_collection, get_jobs_collection, get_applications_collection, get_shortlisted_collection
+from database.connection import get_users_collection, get_jobs_collection, get_applications_collection, get_shortlisted_collection
 
 class JobModel:
     @staticmethod
@@ -115,7 +115,7 @@ class ApplicationModel:
     def create_application(job_id, candidate_id, candidate_email, resume_text, resume_filename):
         """Create new application with skill extraction"""
         from utils.skill_extractor import extract_skills_from_text, match_resume_to_job
-        from database import get_jobs_collection
+        from database.connection import get_jobs_collection
         
         apps = get_applications_collection()
         jobs = get_jobs_collection()
@@ -181,11 +181,19 @@ class ApplicationModel:
     
     @staticmethod
     def get_candidate_applications(candidate_id):
-        """Get all applications for a specific candidate with job details"""
-        apps = get_applications_collection()
-        jobs = get_jobs_collection()
+        """Get all applications for a specific candidate with job details - optimized"""
+        apps_col = get_applications_collection()
+        jobs_col = get_jobs_collection()
         
-        applications = list(apps.find({"candidate_id": candidate_id}).sort("created_at", -1))
+        applications = list(apps_col.find({"candidate_id": candidate_id}).sort("created_at", -1))
+        
+        if not applications:
+            return []
+            
+        # Batch fetch all required jobs
+        job_ids = list(set([ObjectId(app["job_id"]) for app in applications]))
+        jobs_cursor = jobs_col.find({"_id": {"$in": job_ids}})
+        jobs_map = {str(j["_id"]): j for j in jobs_cursor}
         
         enriched = []
         for app in applications:
@@ -193,8 +201,8 @@ class ApplicationModel:
             app["job_id"] = str(app["job_id"])
             app["candidate_id"] = str(app["candidate_id"])
             
-            # Get job details
-            job = jobs.find_one({"_id": ObjectId(app["job_id"])})
+            # Get job details from map
+            job = jobs_map.get(app["job_id"])
             if job:
                 app["job_title"] = job.get("job_title", "Unknown Role")
                 app["company_name"] = job.get("company_name", "Unknown Company")

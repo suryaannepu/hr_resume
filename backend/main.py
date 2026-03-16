@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from database import connect_db, close_db, get_db
-from config import ALLOWED_ORIGINS, PORT, DEBUG
+from database.connection import connect_db, close_db, get_db
+from core.config import ALLOWED_ORIGINS, PORT, DEBUG
 import os
 
 # Import routes
@@ -78,7 +78,7 @@ def internal_error(error):
 
 # Initialize app context and eager-load YOLO models
 with app.app_context():
-    from cheating_detector import get_detector
+    from services.cheating_detector import get_detector
     # Eagerly load the models to avoid a massive lag spike on the first candidate frame
     get_detector()
 

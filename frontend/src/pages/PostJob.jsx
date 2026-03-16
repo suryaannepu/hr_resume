@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
-import { Navigation } from '../components/Navigation';
+import useAuthStore from '../context/authStore';
 import { Alert, Card, Button, Input } from '../components/Common';
 import { PlusCircle, Lightbulb, Send, Loader2, Briefcase, Building, FileText } from 'lucide-react';
 
 export const PostJob = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ job_title: '', company_name: '', description: '' });
+  const { user } = useAuthStore();
+  const [form, setForm] = useState({ 
+    job_title: '', 
+    company_name: user?.company_name || '', 
+    description: '' 
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,19 +33,17 @@ export const PostJob = () => {
   };
 
   return (
-    <>
-      <Navigation userRole="recruiter" />
-      <div className="min-h-screen bg-slate-50 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
+    <div className="min-h-[80vh] py-12 px-4">
+      <div className="max-w-2xl mx-auto">
           <Card padding="large">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <PlusCircle className="text-blue-600" size={24} />
+              <div className="w-10 h-10 bg-[#009688]/10 rounded-xl flex items-center justify-center">
+                <PlusCircle className="text-[#009688]" size={24} />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Post New Job</h2>
             </div>
             <p className="text-slate-500 mb-8 text-sm flex items-center gap-2">
-              <Lightbulb size={16} className="text-amber-500" />
+              <Lightbulb size={16} className="text-[#009688]" />
               AI will automatically extract skills from your description
             </p>
 
@@ -75,7 +78,7 @@ export const PostJob = () => {
                     required
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5 bg-blue-50 text-blue-700 p-2 rounded-lg border border-blue-100">
+                <p className="text-xs font-medium mt-2 flex items-center gap-1.5 bg-[#009688]/5 text-[#009688] p-2 rounded-lg border border-[#009688]/20">
                   <Lightbulb size={14} /> AI will auto-extract technical and soft skills from this description
                 </p>
               </div>
@@ -85,7 +88,6 @@ export const PostJob = () => {
             </form>
           </Card>
         </div>
-      </div>
-    </>
+    </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
+import useAuthStore from '../context/authStore';
 import { Navigation } from '../components/Navigation';
 import {
     Badge,
@@ -327,15 +328,15 @@ const InterviewPractice = ({ application }) => {
 
     if (mode === 'idle') {
         return (
-            <div className="text-center py-10 animate-fade-in">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center mx-auto mb-5">
-                    <Mic2 size={28} className="text-amber-600" />
+            <div className="text-center py-12 animate-fade-in">
+                <div className="w-16 h-16 rounded-xl bg-amber-100 flex items-center justify-center mx-auto mb-6">
+                    <Mic2 size={32} className="text-amber-600" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-2">Interview Practice</h3>
-                <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
-                    Get AI-generated interview questions tailored to this role. Answer them and receive instant scoring with feedback.
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Interview Practice</h3>
+                <p className="text-sm text-slate-500 mb-8 max-w-sm mx-auto leading-relaxed">
+                    Practice with AI-generated interview questions tailored to this role. Get instant feedback and scoring to improve your performance.
                 </p>
-                <Button onClick={fetchQuestion} icon={Play}>Start Practice</Button>
+                <Button onClick={fetchQuestion} icon={Play} size="md">Start Practice Session</Button>
             </div>
         );
     }
@@ -467,58 +468,84 @@ const InterviewPractice = ({ application }) => {
 // Career Insights Component
 const CareerInsights = ({ application }) => {
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {application.key_strengths?.length > 0 && (
-                <InfoBox type="success" title="Your Key Strengths">
-                    <ul className="space-y-2 mt-2">
+                <div className="bg-white border border-slate-200 rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                            <CheckCircle size={20} className="text-emerald-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900">Your Strengths</h3>
+                    </div>
+                    <ul className="space-y-3">
                         {application.key_strengths.map((strength, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm">
-                                <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                                <span className="text-slate-600">{strength}</span>
+                            <li key={i} className="flex items-start gap-3 text-sm">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0" />
+                                <span className="text-slate-700">{strength}</span>
                             </li>
                         ))}
                     </ul>
-                </InfoBox>
-            )}
-
-            {application.growth_potential && (
-                <InfoBox type="info" title="Growth Potential">
-                    <p className="text-sm text-slate-600 mt-2">{application.growth_potential}</p>
-                </InfoBox>
-            )}
-
-            {application.interview_focus?.length > 0 && (
-                <div>
-                    <p className="font-semibold text-sm text-slate-800 mb-3 flex items-center gap-2">
-                        <Target size={16} className="text-blue-600" />
-                        Recommended Interview Focus
-                    </p>
-                    <Timeline items={application.interview_focus.map((focus, i) => ({
-                        title: focus,
-                        completed: i < 2,
-                        description: i === 0 ? 'Priority area' : undefined
-                    }))} />
                 </div>
             )}
 
-            <div className={`p-4 rounded-xl border ${application.recommendation?.includes('Strong')
+            {application.growth_potential && (
+                <div className="bg-white border border-slate-200 rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <Lightbulb size={20} className="text-blue-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900">Growth Potential</h3>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed">{application.growth_potential}</p>
+                </div>
+            )}
+
+            {application.interview_focus?.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                            <Target size={20} className="text-purple-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900">Interview Focus Areas</h3>
+                    </div>
+                    <div className="space-y-3">
+                        {application.interview_focus.map((focus, i) => (
+                            <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold flex-shrink-0">
+                                    {i + 1}
+                                </span>
+                                <span className="text-sm text-slate-700">{focus}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className={`rounded-xl border p-6 ${application.recommendation?.includes('Strong')
                 ? 'bg-emerald-50 border-emerald-200'
                 : application.recommendation?.includes('Good')
                     ? 'bg-blue-50 border-blue-200'
                     : 'bg-amber-50 border-amber-200'
                 }`}>
-                <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${application.recommendation?.includes('Strong')
+                <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${application.recommendation?.includes('Strong')
                         ? 'bg-emerald-100 text-emerald-600'
                         : application.recommendation?.includes('Good')
                             ? 'bg-blue-100 text-blue-600'
                             : 'bg-amber-100 text-amber-600'
                         }`}>
-                        <Award size={20} />
+                        <Award size={24} />
                     </div>
-                    <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider">AI Recommendation</p>
-                        <p className="font-semibold text-slate-800">{application.recommendation || 'Analysis Pending'}</p>
+                    <div className="flex-1">
+                        <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">AI Recommendation</p>
+                        <p className={`text-lg font-bold ${application.recommendation?.includes('Strong')
+                            ? 'text-emerald-900'
+                            : application.recommendation?.includes('Good')
+                                ? 'text-blue-900'
+                                : 'text-amber-900'
+                            }`}>
+                            {application.recommendation || 'Analysis Pending'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -530,37 +557,39 @@ const CareerInsights = ({ application }) => {
 const RiskAssessment = ({ application }) => {
     const riskLevel = application.risk_level || 'Low';
     const riskConfig = {
-        Low: { color: 'emerald', icon: CheckCircle, text: 'Low Risk Profile' },
-        Medium: { color: 'amber', icon: AlertCircle, text: 'Medium Risk - Review Recommended' },
-        High: { color: 'rose', icon: Shield, text: 'High Risk - Attention Needed' },
+        Low: { bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', icon: CheckCircle, text: 'Low Risk Profile' },
+        Medium: { bgColor: 'bg-amber-50', borderColor: 'border-amber-200', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', icon: AlertCircle, text: 'Medium Risk - Review Recommended' },
+        High: { bgColor: 'bg-rose-50', borderColor: 'border-rose-200', iconBg: 'bg-rose-100', iconColor: 'text-rose-600', icon: Shield, text: 'High Risk - Attention Needed' },
     };
     const config = riskConfig[riskLevel] || riskConfig.Low;
     const Icon = config.icon;
 
     return (
-        <div className="space-y-6">
-            <div className={`p-6 rounded-xl border bg-${config.color}-50 border-${config.color}-200`}>
+        <div className="space-y-5">
+            <div className={`${config.bgColor} ${config.borderColor} rounded-xl border p-6`}>
                 <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-2xl bg-${config.color}-100 flex items-center justify-center`}>
-                        <Icon size={28} className={`text-${config.color}-600`} />
+                    <div className={`w-14 h-14 rounded-lg ${config.iconBg} flex items-center justify-center flex-shrink-0`}>
+                        <Icon size={28} className={config.iconColor} />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Risk Assessment</p>
-                        <p className={`text-xl font-bold text-${config.color}-700`}>{config.text}</p>
+                        <p className="text-sm text-slate-500 font-medium mb-1">Risk Assessment</p>
+                        <p className={`text-lg font-bold ${config.iconColor}`}>{config.text}</p>
                     </div>
                 </div>
             </div>
 
             {application.verification_questions?.length > 0 && (
-                <div>
-                    <p className="font-semibold text-sm text-slate-800 mb-3 flex items-center gap-2">
-                        <MessageSquare size={16} className="text-rose-600" />
-                        Areas to Clarify in Interview
-                    </p>
+                <div className="bg-white border border-slate-200 rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                            <MessageSquare size={20} className="text-rose-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900">Areas to Clarify</h3>
+                    </div>
                     <div className="space-y-3">
                         {application.verification_questions.map((q, i) => (
-                            <div key={i} className="flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-xl p-4">
-                                <span className="w-6 h-6 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                            <div key={i} className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                                <span className="w-7 h-7 rounded-full bg-rose-200 text-rose-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
                                     {i + 1}
                                 </span>
                                 <p className="text-sm text-slate-700">{q}</p>
@@ -570,10 +599,11 @@ const RiskAssessment = ({ application }) => {
                 </div>
             )}
 
-            <InfoBox type="info">
-                The Risk Agent analyzes your profile for potential concerns like gaps in employment,
-                vague job descriptions, or missing qualifications. Addressing these areas can improve your candidacy.
-            </InfoBox>
+            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                <p className="text-sm text-slate-700 leading-relaxed">
+                    The Risk Agent analyzes your profile for potential concerns like gaps in employment, vague job descriptions, or missing qualifications. Addressing these areas can improve your candidacy.
+                </p>
+            </div>
         </div>
     );
 };
@@ -582,66 +612,93 @@ const RiskAssessment = ({ application }) => {
 const CommitteeDecision = ({ committeePacket }) => {
     if (!committeePacket) {
         return (
-            <EmptyState
-                icon={Scale}
-                title="Committee Review Pending"
-                description="The AI Committee is reviewing your application. A comprehensive assessment will be available soon."
-            />
+            <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <Scale size={32} className="text-slate-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Committee Review Pending</h3>
+                <p className="text-sm text-slate-500">The AI Committee is reviewing your application. A comprehensive assessment will be available soon.</p>
+            </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {committeePacket.summary_for_candidate && (
-                <InfoBox type="info" title="Committee Summary">
-                    <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{committeePacket.summary_for_candidate}</p>
-                </InfoBox>
+                <div className="bg-white border border-slate-200 rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <MessageSquare size={20} className="text-blue-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-900">Committee Summary</h3>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{committeePacket.summary_for_candidate}</p>
+                </div>
             )}
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-5">
                 {committeePacket.top_strengths?.length > 0 && (
-                    <InfoBox type="success" title="Top Strengths">
-                        <ul className="space-y-2 mt-2">
+                    <div className="bg-white border border-slate-200 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                <CheckCircle size={20} className="text-emerald-600" />
+                            </div>
+                            <h3 className="font-semibold text-slate-900">Top Strengths</h3>
+                        </div>
+                        <ul className="space-y-2">
                             {committeePacket.top_strengths.map((s, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm">
-                                    <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                                    <span className="text-slate-600">{s}</span>
+                                <li key={i} className="flex items-start gap-3 text-sm">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                                    <span className="text-slate-700">{s}</span>
                                 </li>
                             ))}
                         </ul>
-                    </InfoBox>
+                    </div>
                 )}
 
                 {committeePacket.top_gaps?.length > 0 && (
-                    <InfoBox type="warning" title="Areas for Improvement">
-                        <ul className="space-y-2 mt-2">
+                    <div className="bg-white border border-slate-200 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                <AlertCircle size={20} className="text-amber-600" />
+                            </div>
+                            <h3 className="font-semibold text-slate-900">Areas for Improvement</h3>
+                        </div>
+                        <ul className="space-y-2">
                             {committeePacket.top_gaps.map((g, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm">
-                                    <AlertCircle size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                                    <span className="text-slate-600">{g}</span>
+                                <li key={i} className="flex items-start gap-3 text-sm">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                                    <span className="text-slate-700">{g}</span>
                                 </li>
                             ))}
                         </ul>
-                    </InfoBox>
+                    </div>
                 )}
             </div>
 
             {committeePacket.next_step && (
-                <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl p-4">
-                    <p className="text-xs text-cyan-600 uppercase tracking-wider font-semibold mb-1">Recommended Next Step</p>
-                    <p className="text-sm font-medium text-slate-800">{committeePacket.next_step}</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <ArrowRight size={20} className="text-blue-600" />
+                        </div>
+                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Recommended Next Step</p>
+                    </div>
+                    <p className="text-sm text-slate-800 font-medium">{committeePacket.next_step}</p>
                 </div>
             )}
 
-            <div className="flex items-center justify-center gap-8">
-                <ScoreRing
-                    score={committeePacket.final_match_score || 0}
-                    size={80}
-                    label="Final Match"
-                />
-                <div className="text-center">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider">Confidence</p>
-                    <p className="text-2xl font-bold text-slate-800">{committeePacket.confidence_score || 0}%</p>
+            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                    <div className="text-center flex-1">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Final Match Score</p>
+                        <p className="text-3xl font-bold text-slate-900">{committeePacket.final_match_score || 0}%</p>
+                    </div>
+                    <div className="h-16 w-px bg-slate-200" />
+                    <div className="text-center flex-1">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Confidence</p>
+                        <p className="text-3xl font-bold text-slate-900">{committeePacket.confidence_score || 0}%</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -651,8 +708,12 @@ const CommitteeDecision = ({ committeePacket }) => {
 // Main Candidate Dashboard Component
 export const CandidateDashboard = () => {
     const navigate = useNavigate();
-    const [applications, setApplications] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { cachedApps, setCachedApps } = useAuthStore(state => ({
+        cachedApps: state.candidateApplications,
+        setCachedApps: state.setCandidateApplications
+    }));
+    const [applications, setApplications] = useState(cachedApps);
+    const [loading, setLoading] = useState(!cachedApps || cachedApps.length === 0);
     const [error, setError] = useState('');
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
@@ -664,7 +725,7 @@ export const CandidateDashboard = () => {
     useEffect(() => {
         const hasPending = applications.some(app => ['uploaded', 'processing'].includes(app.status));
         if (!hasPending) return;
-        const id = setInterval(fetchApplications, 4000);
+        const id = setInterval(fetchApplications, 8000);  // Optimized: 8s instead of 4s
         return () => clearInterval(id);
     }, [applications]);
 
@@ -672,6 +733,7 @@ export const CandidateDashboard = () => {
         try {
             const res = await apiClient.get('/applications/candidate/all');
             setApplications(res.data.applications);
+            setCachedApps(res.data.applications);
         } catch (err) {
             setError('Failed to load applications');
         } finally {
@@ -950,7 +1012,7 @@ export const CandidateDashboard = () => {
             {/* Sidebar Overlay */}
             <div className={`sidebar-overlay ${showDetailModal ? 'open' : ''}`} onClick={() => setShowDetailModal(false)} />
 
-            {/* Sidebar Panel */}
+            {/* Modern Modal Panel */}
             <div className={`sidebar-panel ${showDetailModal ? 'open' : ''}`}>
                 {detailLoading ? (
                     <div className="flex items-center justify-center h-full">
@@ -960,164 +1022,278 @@ export const CandidateDashboard = () => {
                         </div>
                     </div>
                 ) : detailApp ? (
-                    <div className="flex h-full">
-                        {/* Vertical Agent Nav — centered */}
-                        <div className="w-[72px] flex-shrink-0 bg-gradient-to-b from-slate-50 to-slate-100/80 border-r border-slate-200 flex flex-col items-center justify-center gap-1.5">
-                            {agentTabs.map(tab => {
-                                const isActive = activeTab === tab.key;
-                                return (
-                                    <button
-                                        key={tab.key}
-                                        onClick={() => setActiveTab(tab.key)}
-                                        title={tab.label}
-                                        className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive
-                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                                            : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                                            }`}
-                                    >
-                                        {tab.icon}
-                                        <span className="absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-slate-800 text-white text-[11px] font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-lg">
-                                            {tab.label}
-                                        </span>
+                    <div className="flex flex-col h-full bg-white">
+                        {/* Clean Header */}
+                        <div className="border-b border-slate-200">
+                            <div className="px-6 py-5">
+                                <div className="flex items-start justify-between gap-4 mb-5">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-900">{detailApp.job_title || 'Application'}</h2>
+                                        <p className="text-sm text-slate-500 mt-1">{detailApp.company_name || 'Company Name'}</p>
+                                    </div>
+                                    <button onClick={() => setShowDetailModal(false)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0">
+                                        <X size={20} />
                                     </button>
-                                );
-                            })}
+                                </div>
+                                
+                                {/* Score and Recommendation */}
+                                <div className="flex items-center gap-6">
+                                    <div className="text-center">
+                                        <div className="text-3xl font-bold text-slate-900">{detailApp.match_score || 0}%</div>
+                                        <p className="text-xs text-slate-500 mt-1">Match Score</p>
+                                    </div>
+                                    <div className="h-12 w-px bg-slate-200" />
+                                    <Badge variant={
+                                        (detailApp.recommendation || '').includes('Strong') ? 'excellent' :
+                                            (detailApp.recommendation || '').includes('Good') ? 'good' :
+                                                (detailApp.recommendation || '').includes('Fair') ? 'fair' : 'default'
+                                    }>
+                                        {detailApp.recommendation || 'Under Review'}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            {/* Modern Horizontal Tab Bar */}
+                            <div className="px-6 overflow-x-auto">
+                                <div className="flex gap-1 border-b border-slate-200 -mb-px min-w-full">
+                                    {agentTabs.map(tab => {
+                                        const isActive = activeTab === tab.key;
+                                        return (
+                                            <button
+                                                key={tab.key}
+                                                onClick={() => setActiveTab(tab.key)}
+                                                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all whitespace-nowrap ${isActive
+                                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                                    : 'text-slate-500 hover:text-slate-700 border-b-2 border-transparent'
+                                                    }`}
+                                            >
+                                                {tab.icon}
+                                                {tab.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Main Content */}
                         <div className="flex-1 overflow-y-auto">
-                            {/* Header */}
-                            <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-6 py-4 z-10">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <ScoreRing score={detailApp.match_score || 0} size={52} strokeWidth={5} />
-                                        <div>
-                                            <h3 className="text-base font-bold text-slate-800">{detailApp.job_title || 'Application'}</h3>
-                                            <p className="text-xs text-slate-500">{detailApp.company_name}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant={
-                                            (detailApp.recommendation || '').includes('Strong') ? 'excellent' :
-                                                (detailApp.recommendation || '').includes('Good') ? 'good' :
-                                                    (detailApp.recommendation || '').includes('Fair') ? 'fair' : 'default'
-                                        }>
-                                            {detailApp.recommendation || 'Pending'}
-                                        </Badge>
-                                        <button onClick={() => setShowDetailModal(false)} className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors">
-                                            <X size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Pipeline */}
-                            <div className="px-6 py-4">
-                                <AgentPipelineVisualizer status={detailApp.status} agentOutputs={detailApp.agent_outputs} />
-                            </div>
-
-                            {/* Tab Content */}
-                            <div className="px-6 pb-8">
+                            <div className="px-6 py-6">
                                 {activeTab === 'overview' && (
-                                    <div className="grid gap-5 animate-fade-in">
-                                        <AgentCard icon={Target} title="Resume Analysis" accentColor="brand">
-                                            <div className="space-y-3">
+                                    <div className="space-y-5 animate-fade-in">
+                                        {/* Resume Analysis */}
+                                        <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                            <div className="flex items-center gap-3 mb-5">
+                                                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                    <Target size={20} className="text-blue-600" />
+                                                </div>
+                                                <h3 className="font-semibold text-slate-900">Resume Analysis</h3>
+                                            </div>
+                                            <div className="space-y-4">
                                                 <ScoreBar score={detailApp.skill_match || 0} label="Skill Match" />
                                                 <ScoreBar score={detailApp.experience_match || 0} label="Experience" />
                                                 <ScoreBar score={detailApp.education_match || 0} label="Education" />
                                             </div>
-                                        </AgentCard>
+                                        </div>
 
-                                        <AgentCard icon={Lightbulb} title="Key Insights" accentColor="emerald">
-                                            {detailApp.key_strengths?.length > 0 ? (
+                                        {/* Key Strengths */}
+                                        {detailApp.key_strengths?.length > 0 && (
+                                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                                        <CheckCircle size={20} className="text-emerald-600" />
+                                                    </div>
+                                                    <h3 className="font-semibold text-slate-900">Your Strengths</h3>
+                                                </div>
                                                 <ul className="space-y-2">
                                                     {detailApp.key_strengths.slice(0, 4).map((s, i) => (
-                                                        <li key={i} className="flex items-start gap-2 text-sm">
-                                                            <CheckCircle size={14} className="text-emerald-500 mt-0.5" />
-                                                            <span className="text-slate-600">{s}</span>
+                                                        <li key={i} className="flex items-start gap-3 text-sm">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0" />
+                                                            <span className="text-slate-700">{s}</span>
                                                         </li>
                                                     ))}
                                                 </ul>
-                                            ) : (
-                                                <p className="text-sm text-slate-500">No highlights yet</p>
-                                            )}
-                                        </AgentCard>
-
-                                        {detailApp.skill_gaps?.length > 0 && (
-                                            <AgentCard icon={AlertCircle} title="Development Areas" accentColor="amber">
-                                                <ul className="space-y-2">
-                                                    {detailApp.skill_gaps.slice(0, 4).map((g, i) => (
-                                                        <li key={i} className="flex items-start gap-2 text-sm">
-                                                            <Target size={14} className="text-amber-500 mt-0.5" />
-                                                            <span className="text-slate-600">{g}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </AgentCard>
+                                            </div>
                                         )}
 
+                                        {/* Development Areas */}
+                                        {detailApp.skill_gaps?.length > 0 && (
+                                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                                        <AlertCircle size={20} className="text-amber-600" />
+                                                    </div>
+                                                    <h3 className="font-semibold text-slate-900">Areas to Develop</h3>
+                                                </div>
+                                                <ul className="space-y-2">
+                                                    {detailApp.skill_gaps.slice(0, 4).map((g, i) => (
+                                                        <li key={i} className="flex items-start gap-3 text-sm">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
+                                                            <span className="text-slate-700">{g}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {/* Growth Potential */}
                                         {detailApp.growth_potential && (
-                                            <AgentCard icon={TrendingUpIcon} title="Growth Potential" accentColor="brand">
-                                                <p className="text-sm text-slate-600">{detailApp.growth_potential}</p>
-                                            </AgentCard>
+                                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                                        <TrendingUpIcon size={20} className="text-purple-600" />
+                                                    </div>
+                                                    <h3 className="font-semibold text-slate-900">Growth Potential</h3>
+                                                </div>
+                                                <p className="text-sm text-slate-700 leading-relaxed">{detailApp.growth_potential}</p>
+                                            </div>
                                         )}
                                     </div>
                                 )}
 
                                 {activeTab === 'resume' && (
-                                    <div className="animate-fade-in">
-                                        <ResumeAnalyzer application={detailApp} />
+                                    <div className="space-y-5 animate-fade-in">
+                                        {/* Overall Match */}
+                                        <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                            <p className="text-sm text-slate-600 mb-4">Overall Match Score</p>
+                                            <div className="flex items-center gap-6">
+                                                <ScoreRing score={detailApp.match_score || 0} size={90} label="" />
+                                                <div className="flex-1 space-y-3">
+                                                    <div>
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-sm font-medium text-slate-700">Skills</span>
+                                                            <span className="text-sm font-semibold text-slate-900">{detailApp.skill_match || 0}%</span>
+                                                        </div>
+                                                        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-blue-600 rounded-full" style={{ width: `${detailApp.skill_match || 0}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-sm font-medium text-slate-700">Experience</span>
+                                                            <span className="text-sm font-semibold text-slate-900">{detailApp.experience_match || 0}%</span>
+                                                        </div>
+                                                        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${detailApp.experience_match || 0}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-sm font-medium text-slate-700">Education</span>
+                                                            <span className="text-sm font-semibold text-slate-900">{detailApp.education_match || 0}%</span>
+                                                        </div>
+                                                        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-purple-600 rounded-full" style={{ width: `${detailApp.education_match || 0}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Matching Skills */}
+                                        {detailApp.matching_skills?.length > 0 && (
+                                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                                <h3 className="font-semibold text-slate-900 mb-4">Matching Skills ({detailApp.matching_skills.length})</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {detailApp.matching_skills.map((skill, i) => (
+                                                        <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium border border-emerald-200">
+                                                            <CheckCircle size={14} />
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Missing Skills */}
+                                        {detailApp.missing_skills?.length > 0 && (
+                                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                                <h3 className="font-semibold text-slate-900 mb-4">Skills to Develop ({detailApp.missing_skills.length})</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {detailApp.missing_skills.slice(0, 6).map((skill, i) => (
+                                                        <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-sm font-medium border border-amber-200">
+                                                            <AlertCircle size={14} />
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* All Skills Detected */}
+                                        {detailApp.extracted_skills?.length > 0 && (
+                                            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                                                <h3 className="font-semibold text-slate-900 mb-4">Skills in Your Resume ({detailApp.extracted_skills.length})</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {detailApp.extracted_skills.slice(0, 12).map((skill, i) => (
+                                                        <span key={i} className="inline-flex items-center px-3 py-1.5 bg-slate-100 text-slate-700 rounded-full text-sm font-medium">
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
                                 {activeTab === 'insights' && (
-                                    <div className="animate-fade-in">
+                                    <div className="space-y-5 animate-fade-in">
                                         <CareerInsights application={detailApp} />
                                     </div>
                                 )}
 
                                 {activeTab === 'coach' && (
-                                    <div className="animate-fade-in">
-                                        <AgentCard icon={GraduationCap} title="AI Career Coach" accentColor="purple">
-                                            <AICoachChat
-                                                coaching={detailApp.candidate_coaching}
-                                                application={detailApp}
-                                            />
-                                        </AgentCard>
+                                    <div className="bg-white border border-slate-200 rounded-xl p-6 animate-fade-in">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                                <GraduationCap size={20} className="text-purple-600" />
+                                            </div>
+                                            <h3 className="font-semibold text-slate-900">AI Career Coach</h3>
+                                        </div>
+                                        <AICoachChat
+                                            coaching={detailApp.candidate_coaching}
+                                            application={detailApp}
+                                        />
                                     </div>
                                 )}
 
                                 {activeTab === 'interview' && (
-                                    <div className="animate-fade-in">
-                                        <AgentCard icon={Mic2} title="Interview Practice" accentColor="amber">
-                                            <InterviewPractice application={detailApp} />
-                                        </AgentCard>
+                                    <div className="bg-white border border-slate-200 rounded-xl p-6 animate-fade-in">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                                <Mic2 size={20} className="text-amber-600" />
+                                            </div>
+                                            <h3 className="font-semibold text-slate-900">Interview Prep</h3>
+                                        </div>
+                                        <InterviewPractice application={detailApp} />
                                     </div>
                                 )}
 
                                 {activeTab === 'risk' && (
-                                    <div className="animate-fade-in">
-                                        <AgentCard icon={Shield} title="Risk Assessment" accentColor="rose">
-                                            <RiskAssessment application={detailApp} />
-                                        </AgentCard>
+                                    <div className="bg-white border border-slate-200 rounded-xl p-6 animate-fade-in">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                                                <Shield size={20} className="text-rose-600" />
+                                            </div>
+                                            <h3 className="font-semibold text-slate-900">Risk Assessment</h3>
+                                        </div>
+                                        <RiskAssessment application={detailApp} />
                                     </div>
                                 )}
 
                                 {activeTab === 'committee' && (
                                     <div className="animate-fade-in">
-                                        <AgentCard icon={Scale} title="Hiring Committee" accentColor="cyan">
-                                            <CommitteeDecision committeePacket={detailApp.committee_packet} />
-                                        </AgentCard>
+                                        <CommitteeDecision committeePacket={detailApp.committee_packet} />
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <Alert type="warning" message="No data available" />
-                    </div>
-                )}
+                        <div className="flex items-center justify-center h-full">
+                            <Alert type="warning" message="No data available" />
+                        </div>
+                    )}
             </div>
         </>
     );

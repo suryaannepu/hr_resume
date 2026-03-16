@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import useAuthStore from '../context/authStore';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
 import { Navigation } from '../components/Navigation';
-import { Badge, Loading, Alert, Card, Button, SectionHeader, EmptyState } from '../components/Common';
+import { Badge, Loading, Alert, Card, Button, SectionHeader, EmptyState, Skeleton } from '../components/Common';
 import { Search, Briefcase, Building, CheckCircle, Laptop, Users, ArrowRight } from 'lucide-react';
 
 export const JobsMarketplace = () => {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState([]);
+  const { cachedJobs, setCachedJobs } = useAuthStore(state => ({
+    cachedJobs: state.allJobs,
+    setCachedJobs: state.setAllJobs
+  }));
+  const [jobs, setJobs] = useState(cachedJobs);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedJobs || cachedJobs.length === 0);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
@@ -21,7 +26,9 @@ export const JobsMarketplace = () => {
         apiClient.get('/jobs/list'),
         apiClient.get('/applications/candidate/all'),
       ]);
-      setJobs(jobsRes.data.jobs || []);
+      const fetchedJobs = jobsRes.data.jobs || [];
+      setJobs(fetchedJobs);
+      setCachedJobs(fetchedJobs);
       const appliedSet = new Set((appsRes.data.applications || []).map(a => a.job_id));
       setAppliedJobs(appliedSet);
     } catch (err) { setError('Failed to load jobs'); }
@@ -39,7 +46,35 @@ export const JobsMarketplace = () => {
     );
   });
 
-  if (loading) return <><Navigation userRole="candidate" /><Loading text="Loading jobs..." /></>;
+  if (loading && (!jobs || jobs.length === 0)) {
+    return (
+      <>
+        <Navigation userRole="candidate" />
+        <div className="min-h-screen bg-slate-50 py-8 px-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="h-10 w-full max-w-sm rounded-xl" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <Card key={i} className="h-64 h-full flex flex-col">
+                  <Skeleton className="w-12 h-12 rounded-xl mb-4" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-6" />
+                  <Skeleton className="h-12 w-full mb-4" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

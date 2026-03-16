@@ -1,11 +1,11 @@
 """ATS Checker routes - Resume analysis and scoring"""
 from flask import Blueprint, request, jsonify
 from auth.auth_handler import verify_token
-from models.db_models import ApplicationModel
+from database.models import ApplicationModel
 from utils.resume_parser import extract_text_from_base64
 from utils.ats_analyzer import analyze_resume_for_ats, calculate_ats_improvements
 from utils.cloudinary_handler import upload_resume_from_base64
-from database import get_db
+from database.connection import get_db
 import os
 from datetime import datetime
 from bson.objectid import ObjectId
@@ -149,19 +149,29 @@ def get_ats_check(payload, ats_check_id):
 @ats_bp.route('/applied-resumes', methods=['GET'])
 @require_auth
 def get_applied_resumes(payload):
-    """Get all resumes candidate has applied with (for viewing)"""
+    """Get all resumes candidate has applied with (for viewing) - optimized"""
     try:
         db = get_db()
         apps_collection = db.applications
+        jobs_collection = db.jobs
         
         # Get all applications for this candidate
         applications = list(apps_collection.find(
             {"candidate_id": payload.get('user_id')}
         ).sort("created_at", -1))
         
+        if not applications:
+            return jsonify({"success": True, "resumes": []}), 200
+            
+        # Batch fetch jobs
+        job_ids = list(set([ObjectId(app.get("job_id")) for app in applications if app.get("job_id")]))
+        jobs_cursor = jobs_collection.find({"_id": {"$in": job_ids}})
+        jobs_map = {str(j["_id"]): j for j in jobs_cursor}
+        
         resumes = []
         for app in applications:
-            job = db.jobs.find_one({"_id": ObjectId(app.get("job_id"))})
+            jid = app.get("job_id")
+            job = jobs_map.get(jid)
             
             resumes.append({
                 "application_id": str(app["_id"]),
