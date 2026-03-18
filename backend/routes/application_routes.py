@@ -78,13 +78,19 @@ def apply_to_job(payload):
     if not resume_text:
         return jsonify({"error": "Could not parse resume"}), 400
     
+    # Upload to Supabase
+    from utils.supabase_handler import upload_resume_from_base64
+    supabase_res = upload_resume_from_base64(data['resume_base64'], payload['user_id'], data['resume_filename'])
+    resume_url = supabase_res.get('public_url') if supabase_res.get('success') else None
+    
     # Create application
     application_id = ApplicationModel.create_application(
         job_id=data['job_id'],
         candidate_id=payload['user_id'],
         candidate_email=payload['email'],
         resume_text=resume_text,
-        resume_filename=data['resume_filename']
+        resume_filename=data['resume_filename'],
+        resume_url=resume_url
     )
 
     # Mark processing + kick off async pipeline
@@ -114,6 +120,7 @@ def apply_to_job(payload):
             "success": True,
             "application_id": application_id,
             "status": "processing",
+            "resume_url": resume_url,
             "message": "Application submitted. AI agents are processing your resume now."
         }), 201
 

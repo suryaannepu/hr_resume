@@ -4,7 +4,7 @@ import apiClient from '../utils/api';
 import useAuthStore from '../context/authStore';
 import { Navigation } from '../components/Navigation';
 import { Badge, Loading, Alert, Card, Button } from '../components/Common';
-import { CheckCircle, Sparkles, FileText, Building, Laptop, Users, Upload, Mail, User, ArrowRight } from 'lucide-react';
+import { CheckCircle, Sparkles, FileText, Building, Laptop, Users, Upload, Mail, User, ArrowRight, Clock } from 'lucide-react';
 
 export const ApplyJob = () => {
   const { jobId } = useParams();
@@ -74,8 +74,20 @@ export const ApplyJob = () => {
           {job && (
             <Card className="flex flex-col h-full">
               <h2 className="text-2xl font-bold text-slate-800 mb-2">{job.job_title}</h2>
-              <div className="flex items-center gap-2 text-blue-600 font-medium mb-8">
-                <Building size={18} /> {job.company_name}
+              <div className="flex items-center gap-4 text-blue-600 font-medium mb-8">
+                <div className="flex items-center gap-2">
+                  <Building size={18} /> {job.company_name}
+                </div>
+                {job.deadline && (
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-sm ${
+                    new Date(job.deadline) < new Date() 
+                      ? 'bg-rose-50 border-rose-100 text-rose-600' 
+                      : 'bg-amber-50 border-amber-100 text-amber-700'
+                  }`}>
+                    <Clock size={16} />
+                    <span>Deadline: {new Date(job.deadline).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
 
               <div className="mb-8">

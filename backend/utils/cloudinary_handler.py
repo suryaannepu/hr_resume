@@ -1,8 +1,11 @@
 """Cloudinary file upload handler"""
+import os
+import tempfile
+import base64
+from datetime import datetime
+
 import cloudinary
 import cloudinary.uploader
-import os
-from datetime import datetime
 
 # Configure Cloudinary
 cloudinary.config(
@@ -17,14 +20,14 @@ def upload_resume_to_cloudinary(file_path: str, candidate_id: str, filename: str
     Returns: dict with public_url, secure_url, resource_id
     """
     try:
-        # Create a unique public_id for the file
-        public_id = f"resumes/{candidate_id}/{datetime.now().timestamp()}_{filename}"
+        public_id = f"{datetime.now().timestamp()}_{filename}"
+        folder = f"resumes/{candidate_id}"
         
         result = cloudinary.uploader.upload(
             file_path,
             public_id=public_id,
-            resource_type="auto",
-            folder="resumes",
+            resource_type="raw",
+            folder=folder,
             overwrite=False
         )
         
@@ -46,16 +49,30 @@ def upload_resume_from_base64(base64_data: str, candidate_id: str, filename: str
     Upload resume from base64 data to Cloudinary
     """
     try:
-        # Create a unique public_id
-        public_id = f"resumes/{candidate_id}/{datetime.now().timestamp()}_{filename}"
+        public_id = f"{datetime.now().timestamp()}_{filename}"
+        folder = f"resumes/{candidate_id}"
         
-        result = cloudinary.uploader.upload(
-            f"data:application/pdf;base64,{base64_data}",
-            public_id=public_id,
-            resource_type="auto",
-            folder="resumes",
-            overwrite=False
-        )
+        # Clean base64 string if it contains prefix
+        clean_b64 = base64_data.split(',')[1] if ',' in base64_data else base64_data
+        file_bytes = base64.b64decode(clean_b64)
+        
+        # Cloudinary python SDK rejects data URIs for resource_type="raw". 
+        # We must write to a temporary file locally before uploading.
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+            temp_pdf.write(file_bytes)
+            temp_pdf_path = temp_pdf.name
+            
+        try:
+            result = cloudinary.uploader.upload(
+                temp_pdf_path,
+                public_id=public_id,
+                resource_type="raw",
+                folder=folder,
+                overwrite=False
+            )
+        finally:
+            if os.path.exists(temp_pdf_path):
+                os.remove(temp_pdf_path)
         
         return {
             "success": True,

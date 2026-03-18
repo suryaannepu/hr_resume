@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
 import { Navigation } from '../components/Navigation';
 import { Badge, Loading, Alert, Card, Button, SectionHeader, EmptyState, Skeleton } from '../components/Common';
-import { Search, Briefcase, Building, CheckCircle, Laptop, Users, ArrowRight } from 'lucide-react';
+import { Search, Briefcase, Building, CheckCircle, Laptop, Users, ArrowRight, Clock, X } from 'lucide-react';
 
 export const JobsMarketplace = () => {
   const navigate = useNavigate();
@@ -134,6 +134,21 @@ export const JobsMarketplace = () => {
 
                     <p className="text-sm text-slate-600 leading-relaxed mb-6 line-clamp-3 flex-1">{job.description}</p>
 
+                    {/* Deadline */}
+                    {job.deadline && (
+                      <div className={`mb-6 p-3 rounded-xl border flex items-center gap-2 ${
+                        new Date(job.deadline) < new Date() 
+                          ? 'bg-rose-50 border-rose-100 text-rose-600' 
+                          : 'bg-amber-50 border-amber-100 text-amber-700'
+                      }`}>
+                        <Clock size={16} />
+                        <span className="text-xs font-semibold">
+                          Deadline: {new Date(job.deadline).toLocaleDateString()}
+                          {new Date(job.deadline) < new Date() && ' (Expired)'}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Skills */}
                     <div className="flex flex-wrap gap-1.5 mb-6">
                       {job.required_skills?.slice(0, 5).map((skill, i) => (
@@ -165,13 +180,13 @@ export const JobsMarketplace = () => {
                     )}
 
                     <Button
-                      variant={hasApplied ? 'ghost' : 'primary'}
+                      variant={hasApplied ? 'ghost' : (new Date(job.deadline) < new Date() ? 'secondary' : 'primary')}
                       className="w-full justify-center mt-auto"
-                      onClick={() => !hasApplied && navigate(`/apply/${job._id}`)}
-                      disabled={hasApplied}
-                      icon={hasApplied ? CheckCircle : ArrowRight}
+                      onClick={() => !hasApplied && new Date(job.deadline) >= new Date() && navigate(`/apply/${job._id}`)}
+                      disabled={hasApplied || new Date(job.deadline) < new Date()}
+                      icon={hasApplied ? CheckCircle : (new Date(job.deadline) < new Date() ? X : ArrowRight)}
                     >
-                      {hasApplied ? 'Already Applied' : 'Apply Now'}
+                      {hasApplied ? 'Already Applied' : (new Date(job.deadline) < new Date() ? 'Deadline Passed' : 'Apply Now')}
                     </Button>
                   </Card>
                 );

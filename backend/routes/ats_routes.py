@@ -4,7 +4,7 @@ from auth.auth_handler import verify_token
 from database.models import ApplicationModel
 from utils.resume_parser import extract_text_from_base64
 from utils.ats_analyzer import analyze_resume_for_ats, calculate_ats_improvements
-from utils.cloudinary_handler import upload_resume_from_base64
+from utils.supabase_handler import upload_resume_from_base64
 from database.connection import get_db
 import os
 from datetime import datetime

@@ -985,12 +985,19 @@ export const CandidateDashboard = () => {
                                                                 <p className="text-sm text-slate-500">Take your interview anytime - it is AI-powered and available 24/7</p>
                                                             </div>
                                                         </div>
+                                                        {app.decision === 'shortlisted' && (
                                                         <Button
-                                                            onClick={() => window.location.href = `/interview/${app._id}`}
-                                                            icon={Rocket}
+                                                            size="sm"
+                                                            icon={Play}
+                                                            disabled={app.job_deadline && new Date(app.job_deadline) < new Date()}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigate(`/interview/${app._id}`);
+                                                            }}
                                                         >
-                                                            Take Interview
+                                                            {app.job_deadline && new Date(app.job_deadline) < new Date() ? 'Deadline Passed' : 'Take AI Interview'}
                                                         </Button>
+                                                    )}
                                                     </div>
                                                 </div>
                                             )}

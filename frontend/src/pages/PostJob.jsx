@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/api';
 import useAuthStore from '../context/authStore';
 import { Alert, Card, Button, Input } from '../components/Common';
-import { PlusCircle, Lightbulb, Send, Loader2, Briefcase, Building, FileText } from 'lucide-react';
+import { PlusCircle, Lightbulb, Send, Loader2, Briefcase, Building, FileText, Clock } from 'lucide-react';
 
 export const PostJob = () => {
   const navigate = useNavigate();
@@ -11,6 +11,8 @@ export const PostJob = () => {
   const [form, setForm] = useState({ 
     job_title: '', 
     company_name: user?.company_name || '', 
+    domain: 'Machine Learning',
+    deadline: '',
     description: '' 
   });
   const [error, setError] = useState('');
@@ -66,6 +68,34 @@ export const PostJob = () => {
                 icon={Building}
                 required
               />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Job Domain</label>
+                  <select
+                    className="input-field w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#009688]"
+                    value={form.domain}
+                    onChange={e => update('domain', e.target.value)}
+                    required
+                  >
+                    <option value="Machine Learning">Machine Learning</option>
+                    <option value="Data Science">Data Science</option>
+                    <option value="Backend">Backend</option>
+                    <option value="Frontend">Frontend</option>
+                    <option value="Fullstack">Fullstack</option>
+                    <option value="Mobile">Mobile</option>
+                    <option value="DevOps">DevOps</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <Input
+                  label="Application Deadline"
+                  type="date"
+                  value={form.deadline}
+                  onChange={e => update('deadline', e.target.value)}
+                  icon={Clock}
+                  required
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Job Description</label>
                 <div className="relative">

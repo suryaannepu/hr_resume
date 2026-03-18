@@ -32,12 +32,18 @@ def create_job(payload):
     if not all(k in data for k in required):
         return jsonify({"error": "Missing required fields"}), 400
     
+    # Optional fields
+    deadline = data.get('deadline')
+    domain = data.get('domain', 'Other')
+    
     job_id = JobModel.create_job(
         recruiter_id=payload['user_id'],
         company_name=data['company_name'],
         job_title=data['job_title'],
         description=data['description'],
-        required_skills=data['required_skills']
+        required_skills=data['required_skills'],
+        deadline=deadline,
+        domain=domain
     )
     
     return jsonify({

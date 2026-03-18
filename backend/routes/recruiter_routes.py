@@ -26,7 +26,7 @@ def require_auth(f):
 @recruiter_bp.route('/dashboard', methods=['GET'])
 @require_auth
 def get_dashboard(payload):
-    """Get recruiter dashboard data - optimized with batched queries"""
+    """Get recruiter dashboard data - optimized with domain grouping and nested apps"""
     user_id = payload['user_id']
     
     # Get recruiter's jobs
@@ -36,76 +36,85 @@ def get_dashboard(payload):
             "total_jobs": 0,
             "total_applications": 0,
             "total_processed": 0,
+            "total_pending": 0,
+            "domains": {},
             "jobs": []
         }), 200
         
-    job_ids = [ObjectId(job['_id']) for job in jobs]
     job_ids_str = [job['_id'] for job in jobs]
     
-    # Batch fetch all applications and shortlists for all jobs
+    # Batch fetch all applications for all jobs
     apps_col = get_applications_collection()
     all_apps = list(apps_col.find({"job_id": {"$in": job_ids_str}}))
     
-    shortlist_col = get_shortlisted_collection()
-    all_shortlists = list(shortlist_col.find({"job_id": {"$in": job_ids_str}}))
-    
-    # Organize in-memory
+    # Organize applications by job and sanitize for frontend
     apps_by_job = {jid: [] for jid in job_ids_str}
     for app in all_apps:
+        app['_id'] = str(app['_id'])
+        # Extract skills for quick view
+        app['matched_skills'] = app.get('matching_skills') or app.get('matched_skills', [])
         apps_by_job[app['job_id']].append(app)
         
-    shortlists_by_job = {jid: [] for jid in job_ids_str}
-    for s in all_shortlists:
-        shortlists_by_job[s['job_id']].append(s)
+    total_applications = 0
+    total_processed = 0
+    total_pending = 0
+    
+    domains_data = {}
+    
+    # Attach applications to jobs and calculate domain stats
+    for job in jobs:
+        jid = job['_id']
+        domain = job.get('domain', 'Other')
+        job_apps = apps_by_job.get(jid, [])
+        job['applications'] = job_apps # ATTACH APPS HERE
+        
+        if domain not in domains_data:
+            domains_data[domain] = {
+                "name": domain,
+                "total_applications": 0,
+                "shortlisted": 0,
+                "rejected": 0,
+                "avg_score": 0,
+                "jobs_count": 0,
+                "job_ids": [],
+                "scores": []
+            }
+        
+        # Count processed vs pending
+        processed_count = len([app for app in job_apps if app.get('status') == 'processed'])
+        shortlisted = len([app for app in job_apps if app.get('decision') == 'shortlisted'])
+        rejected = len([app for app in job_apps if app.get('decision') == 'rejected'])
+        
+        # Scores for domain avg
+        job_scores = [app.get('match_score', 0) for app in job_apps if app.get('match_score') is not None]
+        
+        # Update domain stats
+        dom = domains_data[domain]
+        dom["total_applications"] += len(job_apps)
+        dom["shortlisted"] += shortlisted
+        dom["rejected"] += rejected
+        dom["jobs_count"] += 1
+        dom["job_ids"].append(jid)
+        dom["scores"].extend(job_scores)
+        
+        total_applications += len(job_apps)
+        total_processed += processed_count
+        total_pending += (len(job_apps) - processed_count)
+        
+    # Finalize domain averages
+    for dom in domains_data.values():
+        if dom["scores"]:
+            dom["avg_score"] = round(sum(dom["scores"]) / len(dom["scores"]))
+        dom.pop("scores")
         
     dashboard_data = {
         "total_jobs": len(jobs),
-        "jobs": []
+        "total_applications": total_applications,
+        "total_processed": total_processed,
+        "total_pending": total_pending,
+        "domains": domains_data,
+        "jobs": jobs 
     }
-    
-    total_applications = 0
-    total_processed = 0
-    
-    for job in jobs:
-        jid = job['_id']
-        job_apps = apps_by_job.get(jid, [])
-        job_shortlist = shortlists_by_job.get(jid, [])
-        
-        # Count processed
-        processed = [app for app in job_apps if app.get('status') not in ('uploaded', 'processing')]
-        
-        # Dashboard preview
-        preview_apps = [app for app in processed if app.get('decision') not in ('rejected', 'hired')]
-        
-        preview_apps_limited = []
-        for app in preview_apps[:5]:
-            preview_apps_limited.append({
-                "_id": str(app.get('_id')),
-                "candidate_name": app.get('candidate_name'),
-                "match_score": app.get('match_score'),
-                "status": app.get('status'),
-                "decision": app.get('decision')
-            })
-            
-        approved_count = len([s for s in job_shortlist if s.get('approved_by_recruiter')])
-        
-        job_data = {
-            "job_id": jid,
-            "job_title": job['job_title'],
-            "total_applications": len(job_apps),
-            "processed_applications": len(processed),
-            "shortlist_count": len(job_shortlist),
-            "approved_count": approved_count,
-            "applications": preview_apps_limited,
-            "ai_insights": job.get("ai_insights")
-        }
-        
-        dashboard_data["jobs"].append(job_data)
-        total_applications += len(job_apps)
-        total_processed += len(processed)
-    
-    dashboard_data["total_applications"] = total_applications
-    dashboard_data["total_processed"] = total_processed
     
     return jsonify(dashboard_data), 200
 

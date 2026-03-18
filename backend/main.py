@@ -9,6 +9,7 @@ from routes.auth_routes import auth_bp
 from routes.job_routes import jobs_bp
 from routes.application_routes import applications_bp
 from routes.recruiter_routes import recruiter_bp
+from routes.recruiter_chat import recruiter_chat_bp
 from routes.interview_routes import interview_bp
 from routes.practice_routes import practice_bp
 from routes.voice_interview_routes import voice_interview_bp
@@ -53,6 +54,7 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(jobs_bp, url_prefix='/api/jobs')
 app.register_blueprint(applications_bp, url_prefix='/api/applications')
 app.register_blueprint(recruiter_bp, url_prefix='/api/recruiter')
+app.register_blueprint(recruiter_chat_bp, url_prefix='/api/recruiter')
 app.register_blueprint(interview_bp, url_prefix='/api/interview')
 app.register_blueprint(practice_bp, url_prefix='/api/practice')
 app.register_blueprint(voice_interview_bp, url_prefix='/api/voice-interview')

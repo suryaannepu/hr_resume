@@ -5,7 +5,7 @@ from database.connection import get_users_collection, get_jobs_collection, get_a
 
 class JobModel:
     @staticmethod
-    def create_job(recruiter_id, company_name, job_title, description, required_skills):
+    def create_job(recruiter_id, company_name, job_title, description, required_skills, deadline=None, domain="Other"):
         """Create a new job posting"""
         from utils.skill_extractor import extract_skills_from_text
         
@@ -27,10 +27,12 @@ class JobModel:
             "recruiter_id": recruiter_id,
             "company_name": company_name,
             "job_title": job_title,
+            "domain": domain,
             "description": description,
             "required_skills": sorted(merged_skills),
             "technical_requirements": description_skills['technical'],
             "soft_requirements": description_skills['soft'],
+            "deadline": deadline,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "status": "active"
@@ -53,13 +55,39 @@ class JobModel:
     
     @staticmethod
     def list_all_jobs():
-        """List all active jobs"""
+        """List all active jobs that haven't passed their deadline"""
         jobs = get_jobs_collection()
-        all_jobs = list(jobs.find({"status": "active"}).sort("created_at", -1))
+        now = datetime.utcnow()
+        
+        # Query for active jobs
+        query = {"status": "active"}
+        
+        all_jobs = list(jobs.find(query).sort("created_at", -1))
+        
+        active_jobs = []
         for job in all_jobs:
+            # Check deadline if exists
+            deadline = job.get('deadline')
+            if deadline:
+                try:
+                    # Deadline is stored as string in ISO format or similar from frontend
+                    if isinstance(deadline, str):
+                        deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+                    else:
+                        deadline_dt = deadline
+                        
+                    if deadline_dt < now:
+                        # Auto-close if deadline passed
+                        jobs.update_one({"_id": job["_id"]}, {"$set": {"status": "closed"}})
+                        continue
+                except Exception as e:
+                    print(f"Error checking deadline for job {job['_id']}: {e}")
+            
             job["_id"] = str(job["_id"])
             job["recruiter_id"] = str(job["recruiter_id"])
-        return all_jobs
+            active_jobs.append(job)
+            
+        return active_jobs
     
     @staticmethod
     def list_recruiter_jobs(recruiter_id):
@@ -112,7 +140,7 @@ class ApplicationModel:
         return apps.find_one({"candidate_id": candidate_id, "job_id": job_id}) is not None
 
     @staticmethod
-    def create_application(job_id, candidate_id, candidate_email, resume_text, resume_filename):
+    def create_application(job_id, candidate_id, candidate_email, resume_text, resume_filename, resume_url=None):
         """Create new application with skill extraction"""
         from utils.skill_extractor import extract_skills_from_text, match_resume_to_job
         from database.connection import get_jobs_collection
@@ -137,6 +165,7 @@ class ApplicationModel:
             "candidate_email": candidate_email,
             "resume_text": resume_text,
             "resume_filename": resume_filename,
+            "resume_url": resume_url,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "status": "uploaded",
@@ -206,6 +235,8 @@ class ApplicationModel:
             if job:
                 app["job_title"] = job.get("job_title", "Unknown Role")
                 app["company_name"] = job.get("company_name", "Unknown Company")
+                app["job_deadline"] = job.get("deadline")
+                app["job_domain"] = job.get("domain")
                 
             ApplicationModel._sanitize_application_for_list(app)
             enriched.append(app)

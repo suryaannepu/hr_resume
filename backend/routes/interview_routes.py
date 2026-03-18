@@ -76,6 +76,22 @@ def start_ai_interview(payload, application_id):
         return jsonify({"error": "Application not found"}), 404
     if app['candidate_id'] != payload['user_id']:
         return jsonify({"error": "Unauthorized"}), 403
+    # Check deadline
+    from datetime import datetime
+    job = JobModel.get_job(app.get('job_id', ''))
+    if job and job.get('deadline'):
+        try:
+            deadline = job.get('deadline')
+            if isinstance(deadline, str):
+                deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+            else:
+                deadline_dt = deadline
+                
+            if deadline_dt < datetime.utcnow():
+                return jsonify({"error": "The deadline for this job has passed. Interviews are no longer available."}), 400
+        except Exception as e:
+            print(f"Error checking deadline in interview: {e}")
+
     if app.get('decision') not in ['shortlisted', 'hired'] and app.get('status') not in ['interview_pending', 'interview_completed', 'evaluated']:
         return jsonify({"error": "You have not been invited for an interview"}), 400
 
