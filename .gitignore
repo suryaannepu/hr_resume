@@ -1,128 +1,181 @@
-# ===== ENVIRONMENT FILES =====
-.env
+# Python Virtual Environments
+myvenv/
+venv/
+env/
+ENV/
+.venv
 .env.local
-.env.*.local
-.env.prod
+.env*.local
+.
+# Environment variables
+.env
 .env.development
+.env.production
 .env.test
 
-# ===== PYTHON - Virtual Environments =====
-venv/
-venv/*
-env/
-env/*
-.venv
-.venv/
-.myvenv
-.myvenv/
-myvenv/
-myvenv/*
-ENV/
-env.bak/
-venv.bak/
-.virtualenvs/
-pip-log.txt
-pip-delete-this-directory.txt
-
-# ===== PYTHON - Caches & Compiled Files =====
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-*.egg-info/
-dist/
 build/
-*.egg
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-*.egg-info
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Testing
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
-.pytest_cache
+.hypothesis/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Node (if using any Node build tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# IDE temporary files
+*.tmp
+
+# Flask
+instance/
+.webassets-cache
+
+# Database backups
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Credentials and secrets
+.credentials
+secrets/
+credentials.json
+
+# MacOS
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+$RECYCLE.BIN/
+ehthumbs.db
+
+# Docker (if using containers)
+.dockerignore
+docker-compose.override.yml
+
+# Package manager lock files (optional - uncomment if needed)
+# poetry.lock
+# Pipfile.lock
+
+# Generated files
+dist/
+*.egg-info/
+.eggs/
+
+# pytest
+.pytest_cache/
+
+# mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# ===== NODE - Frontend =====
-node_modules/
-node_modules/*
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-.npm
-.eslintcache
-.next/
-out/
+# Pyre type checker
+.pyre/
 
-# ===== BUILD & DIST =====
-build/
-dist/
-*.min.js
-*.min.css
-
-# ===== IDE & EDITOR =====
-.vscode/
-.vscode/*
-.idea/
-.idea/*
-.DS_Store
-.AppleDouble
-.LSOverride
-*.sublime-project
-*.sublime-workspace
-.project
-.pydevproject
-.settings
-*.iml
-*.iws
-.classpath
-.c9/
-*.swp
-*.swo
-*~
-.vim*
-
-# ===== OS FILES =====
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-.directory
-
-# ===== LOGS & TEMP FILES =====
-*.log
-*.logs
-logs/
-tmp/
-temp/
-*.tmp
-*.bak
-*.tmp.*
-
-# ===== DATABASE =====
-*.db
-*.sqlite
-*.sqlite3
-dump.rdb
-
-# ===== MISC =====
+# Cache files
 .cache/
-.pytest_cache/
-.hypothesis/
-.coverage
-.coverage.*
-htmlcov/
-*.cover
-.turbo/
-dist-ssr/
-coverage/
-.env.example
+*.cache
 
+# Compiled files
+*.so
+*.egg
+*.pyc
+
+# MongoDB local data
+data/
+mongodb_data/
+
+# Any local configuration overrides
+local_config.py
+settings_local.py
+
+# IDE settings (workspace specific)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Environment-specific files
+.env.*.local
+.env.*.example
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Keep this note
+# Add any project-specific entries below:
+# 
+# Example:
+# uploads/
+# temp_files/
+# sensitive_data/
+
+# YOLO
+yolomodels/

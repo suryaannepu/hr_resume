@@ -49,7 +49,7 @@ class CheatingDetector:
         # ── YOLO: Face & Person Detection ──
         try:
             self.face_person_model = YOLO(
-                r"c:\Users\acer\Desktop\RESUME_AI\backend\yolomodels\yolov8x_person_face.pt"
+                r"C:\Users\Meghana\Downloads\hr_resume\backend\yolo_models\yolov8x_person_face.pt"
             )
             self.face_person_model.to(self.device)
             print("✓ Face-Person model loaded")
@@ -60,7 +60,7 @@ class CheatingDetector:
         # ── YOLO: Mobile Phone Detection ──
         try:
             self.phone_model = YOLO(
-                r"c:\Users\acer\Desktop\RESUME_AI\backend\yolomodels\best (2).pt"
+                r"C:\Users\Meghana\Downloads\hr_resume\backend\yolo_models\best.pt"
             )
             self.phone_model.to(self.device)
             print("✓ Phone model loaded")
