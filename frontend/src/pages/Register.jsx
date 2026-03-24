@@ -21,6 +21,7 @@ export const Register = () => {
   const credential = googleData?.credential;
 
   const handleGoogleSuccess = async (credentialResponse) => {
+    console.log('[Register] Google login success, credential received');
     setGoogleData({
       credential: credentialResponse.credential
     });
@@ -36,13 +37,19 @@ export const Register = () => {
     setError('');
     
     try {
+      console.log('[Register] Submitting registration with role:', role);
+      console.log('[Register] Credential length:', credential?.length);
+      
       const res = await apiClient.post('/auth/google', { 
         credential,
         role,
         company_name: companyName 
       });
 
+      console.log('[Register] Auth response:', res.data);
+
       if (res.data.error) {
+        console.error('[Register] Auth error:', res.data.error);
         setError(res.data.error);
         setLoading(false);
         return;
@@ -108,11 +115,9 @@ export const Register = () => {
                   <GoogleLogin 
                     onSuccess={handleGoogleSuccess}
                     onError={() => setError('Google verification failed')}
-                    useOneTap
                     shape="pill"
                     theme="filled_black"
                     size="large"
-                    width="100%"
                   />
                 </div>
                 <p className="text-center text-sm text-slate-600 font-medium mt-10">

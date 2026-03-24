@@ -15,16 +15,23 @@ export const Login = () => {
     setLoading(true);
     setError('');
     try {
+      console.log('[Login] Google login success, credential received');
+      console.log('[Login] Credential length:', credentialResponse.credential?.length);
+      
       const res = await apiClient.post('/auth/google', { 
         credential: credentialResponse.credential 
       });
 
+      console.log('[Login] Auth response:', res.data);
+
       if (res.data.error) {
+        console.error('[Login] Auth error:', res.data.error);
         setError(res.data.error);
         return;
       }
 
       if (res.data.needs_role) {
+        console.log('[Login] New user - redirecting to register');
         // Redirect to register with Google info to select role
         navigate('/register', { 
           state: { 
@@ -37,6 +44,7 @@ export const Login = () => {
       }
 
       // Successful login for existing user
+      console.log('[Login] Login successful for user:', res.data.email);
       setToken(res.data.token);
       setUser({ 
         name: res.data.name, 
@@ -48,6 +56,8 @@ export const Login = () => {
       
       navigate(res.data.role === 'recruiter' ? '/recruiter-dashboard' : '/jobs');
     } catch (err) {
+      console.error('[Login] Request error:', err);
+      console.error('[Login] Error response:', err.response?.data);
       setError(err.response?.data?.error || 'Login failed');
     } finally {
       setLoading(false);
@@ -100,11 +110,9 @@ export const Login = () => {
                   <GoogleLogin 
                     onSuccess={handleGoogleSuccess}
                     onError={() => setError('Google sign-in failed. Please try again.')}
-                    useOneTap
                     shape="pill"
                     theme="filled_blue"
                     size="large"
-                    width="100%"
                   />
                 </div>
               )}

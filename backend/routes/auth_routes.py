@@ -11,11 +11,18 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/google', methods=['POST'])
 def google_auth():
     """Handle Google OAuth login/registration"""
+    print(f"[Auth Route] /google endpoint called")
+    print(f"[Auth Route] Request headers: {dict(request.headers)}")
+    
     data = request.get_json()
+    print(f"[Auth Route] Request data keys: {list(data.keys()) if data else 'No data'}")
 
-    credential = data.get('credential')
+    credential = data.get('credential') if data else None
     if not credential:
+        print(f"[Auth Route] No credential provided in request")
         return jsonify({"error": "Google credential is required"}), 400
+    
+    print(f"[Auth Route] Credential received (length: {len(credential)})")
 
     role = data.get('role')  # Optional: provided when registering
     company_name = data.get('company_name')  # Optional: for recruiters
@@ -23,12 +30,15 @@ def google_auth():
     result = google_login_or_register(credential, role, company_name)
 
     if 'error' in result:
+        print(f"[Auth Route] Authentication failed: {result['error']}")
         return jsonify(result), 400
 
     if result.get('needs_role'):
         # New user — frontend should show role selection
+        print(f"[Auth Route] New user needs role selection")
         return jsonify(result), 200
 
+    print(f"[Auth Route] Authentication successful for user: {result.get('email')}")
     return jsonify(result), 200
 
 

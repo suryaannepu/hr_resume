@@ -23,7 +23,7 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
         "origins": ALLOWED_ORIGINS,
-        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
@@ -66,9 +66,13 @@ app.register_blueprint(bulk_upload_bp, url_prefix='/api/bulk-upload')
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    import time
+    current_time = int(time.time())
     return jsonify({
         "status": "ok",
-        "message": "Agentic AI Hiring Assistant is running"
+        "message": "Agentic AI Hiring Assistant is running",
+        "server_timestamp": current_time,
+        "server_time_readable": time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(current_time))
     }), 200
 
 # Error handlers
