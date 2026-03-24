@@ -50,7 +50,211 @@ import {
     StopCircle,
     Eye,
     MapPin,
+    Download,
+    Upload,
+    GitCompare,
 } from 'lucide-react';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Resume Tailor Component – AI Tailoring → PDF + Side-by-Side Compare
+// ─────────────────────────────────────────────────────────────────────────────
+const ResumeTailor = ({ application }) => {
+    const [resumeFile, setResumeFile] = useState(null);
+    const [resumeBase64, setResumeBase64] = useState('');
+    const [generating, setGenerating] = useState(false);
+    const [tailoredPdfUrl, setTailoredPdfUrl] = useState(null);
+    const [tailoredFilename, setTailoredFilename] = useState('tailored_resume.pdf');
+    const [compareMode, setCompareMode] = useState(false);
+    const [error, setError] = useState('');
+    const fileInputRef = React.useRef(null);
+
+    // Convert file to base64 when user selects one
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            setError('Please upload a PDF file.');
+            return;
+        }
+        setResumeFile(file);
+        setError('');
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            // Strip data URI prefix to get pure base64
+            const b64 = ev.target.result.split(',')[1];
+            setResumeBase64(b64);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleGenerate = async () => {
+        if (!resumeBase64) { setError('Please upload your resume first.'); return; }
+        setGenerating(true);
+        setError('');
+        setTailoredPdfUrl(null);
+        setCompareMode(false);
+        try {
+            const res = await apiClient.post(`/jobs/${application.job_id}/generate-resume`, {
+                resume_base64: resumeBase64,
+            });
+            const { pdf_base64, filename } = res.data;
+            // Convert base64 PDF to blob URL for iframe display
+            const byteCharacters = atob(pdf_base64);
+            const byteNumbers = Array.from(byteCharacters).map(c => c.charCodeAt(0));
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const blobUrl = URL.createObjectURL(blob);
+            setTailoredPdfUrl(blobUrl);
+            setTailoredFilename(filename || 'tailored_resume.pdf');
+            setCompareMode(true);
+        } catch (err) {
+            setError(err?.response?.data?.error || 'Failed to generate tailored resume. Please try again.');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const handleDownload = () => {
+        if (!tailoredPdfUrl) return;
+        const a = document.createElement('a');
+        a.href = tailoredPdfUrl;
+        a.download = tailoredFilename;
+        a.click();
+    };
+
+    const originalPdfUrl = application?.resume_url || application?.cloudinary_url || null;
+
+    return (
+        <div className="space-y-5 animate-fade-in">
+            {/* Header card */}
+            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-xl p-5">
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                        <Sparkles size={20} className="text-violet-600" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-slate-900">AI Resume Tailoring</h3>
+                        <p className="text-xs text-slate-500">Our AI intelligently rewrites your resume to perfectly match this job</p>
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-violet-700">
+                    {['ATS Optimised', 'Job-Keyword Aligned', 'Professional PDF', 'Side-by-Side Compare'].map(t => (
+                        <span key={t} className="flex items-center gap-1 bg-violet-100 px-2 py-1 rounded-full">
+                            <CheckCircle size={11} /> {t}
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            {/* Upload section */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <p className="text-sm font-semibold text-slate-800 mb-3">Upload Your Current Resume (PDF)</p>
+                <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-300 hover:border-violet-400 rounded-xl p-6 text-center cursor-pointer transition-colors group"
+                >
+                    <Upload size={28} className="mx-auto text-slate-400 group-hover:text-violet-500 mb-2 transition-colors" />
+                    <p className="text-sm text-slate-600 font-medium">
+                        {resumeFile ? resumeFile.name : 'Click to upload your PDF resume'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">PDF files only</p>
+                </div>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={handleFileChange}
+                />
+
+                {error && (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                        <AlertCircle size={14} /> {error}
+                    </div>
+                )}
+
+                <button
+                    onClick={handleGenerate}
+                    disabled={!resumeBase64 || generating}
+                    className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20"
+                >
+                    {generating ? (
+                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Generating Tailored Resume...</>
+                    ) : (
+                        <><Sparkles size={16} /> Generate Tailored Resume</>
+                    )}
+                </button>
+            </div>
+
+            {/* Side-by-Side Compare */}
+            {compareMode && tailoredPdfUrl && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                            <GitCompare size={16} className="text-violet-600" />
+                            Side-by-Side Comparison
+                        </div>
+                        <button
+                            onClick={handleDownload}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                        >
+                            <Download size={13} /> Download Tailored PDF
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* Left: Original */}
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="w-2 h-2 rounded-full bg-slate-400" />
+                                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Original Resume</p>
+                            </div>
+                            <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50" style={{ height: '520px' }}>
+                                {originalPdfUrl ? (
+                                    <iframe
+                                        src={originalPdfUrl}
+                                        title="Original Resume"
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 'none' }}
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                                        <FileText size={32} />
+                                        <p className="text-xs text-center">Original resume not available<br />as a stored URL</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right: Tailored */}
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="w-2 h-2 rounded-full bg-violet-500" />
+                                <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide">AI Tailored Resume</p>
+                                <span className="px-1.5 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full">NEW</span>
+                            </div>
+                            <div className="border border-violet-200 rounded-xl overflow-hidden" style={{ height: '520px' }}>
+                                <iframe
+                                    src={tailoredPdfUrl}
+                                    title="Tailored Resume"
+                                    width="100%"
+                                    height="100%"
+                                    style={{ border: 'none' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800 flex items-start gap-2">
+                        <CheckCircle size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                        <span>Your tailored resume has been generated! It is ATS-optimised and aligned with the job requirements. Download it and use it when applying.</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 // AI Coach Chat Component
 const AICoachChat = ({ coaching, application }) => {
@@ -806,6 +1010,7 @@ export const CandidateDashboard = () => {
     const agentTabs = [
         { key: 'overview', icon: <FileText size={16} />, label: 'Overview' },
         { key: 'resume', icon: <Target size={16} />, label: 'Resume Analyzer' },
+        { key: 'tailor', icon: <Sparkles size={16} />, label: 'AI Tailor' },
         { key: 'insights', icon: <Lightbulb size={16} />, label: 'Career Insights' },
         { key: 'coach', icon: <GraduationCap size={16} />, label: 'AI Coach' },
         { key: 'interview', icon: <Mic2 size={16} />, label: 'Interview Prep' },
@@ -1285,6 +1490,12 @@ export const CandidateDashboard = () => {
                                             <h3 className="font-semibold text-slate-900">Risk Assessment</h3>
                                         </div>
                                         <RiskAssessment application={detailApp} />
+                                    </div>
+                                )}
+
+                                {activeTab === 'tailor' && (
+                                    <div className="animate-fade-in">
+                                        <ResumeTailor application={detailApp} />
                                     </div>
                                 )}
 

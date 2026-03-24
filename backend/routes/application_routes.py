@@ -246,3 +246,51 @@ def chat_with_coach(payload, application_id):
     except Exception as e:
         print(f"Error in coach chat: {e}")
         return jsonify({"error": "Failed to generate response"}), 500
+
+@applications_bp.route('/save-job', methods=['POST'])
+@require_auth
+def save_job(payload):
+    """Save / bookmark a job for a candidate"""
+    data = request.get_json()
+    job_id = data.get('job_id')
+    if not job_id:
+        return jsonify({"error": "job_id is required"}), 400
+
+    from database.connection import get_saved_jobs_collection
+    col = get_saved_jobs_collection()
+
+    # Idempotent upsert
+    existing = col.find_one({"candidate_id": payload['user_id'], "job_id": job_id})
+    if existing:
+        return jsonify({"success": True, "message": "Already saved"}), 200
+
+    col.insert_one({
+        "candidate_id": payload['user_id'],
+        "job_id": job_id,
+        "saved_at": datetime.utcnow()
+    })
+    return jsonify({"success": True, "message": "Job saved"}), 201
+
+@applications_bp.route('/saved-jobs', methods=['GET'])
+@require_auth
+def get_saved_jobs(payload):
+    """Get all saved/bookmarked jobs for a candidate"""
+    from database.connection import get_saved_jobs_collection
+    col = get_saved_jobs_collection()
+    saved = list(col.find({"candidate_id": payload['user_id']}, {"_id": 0}))
+    return jsonify({"saved_jobs": saved}), 200
+
+@applications_bp.route('/unsave-job', methods=['POST'])
+@require_auth
+def unsave_job(payload):
+    """Remove a saved job"""
+    data = request.get_json()
+    job_id = data.get('job_id')
+    if not job_id:
+        return jsonify({"error": "job_id is required"}), 400
+
+    from database.connection import get_saved_jobs_collection
+    col = get_saved_jobs_collection()
+    col.delete_one({"candidate_id": payload['user_id'], "job_id": job_id})
+    return jsonify({"success": True, "message": "Job removed from saved"}), 200
+

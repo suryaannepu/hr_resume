@@ -1,0 +1,68 @@
+[
+  {
+    "job_title": "Backend Engineer",
+    "job_description": "We are looking for a Backend Engineer to build scalable APIs and microservices. The candidate should be proficient in Python and have experience with RESTful APIs and databases.",
+    "location": {
+      "city": "Bangalore",
+      "country": "India"
+    },
+    "job_type": "Remote",
+    "employment_type": "Full-time",
+    "deadline": "2027-06-30",
+    "experience_required": "2+ years",
+    "salary_range": "₹8-15 LPA",
+    "required_skills": ["Python", "FastAPI", "MongoDB", "REST APIs"],
+    "resume_template": {
+      "about": "Write a concise summary highlighting backend development experience, API design, and scalability.",
+      "education": "Include degree, university, and graduation year.",
+      "skills": "Mention Python, FastAPI, database management, and API development.",
+      "projects": "Include backend-heavy projects such as REST API systems, microservices, or scalable applications.",
+      "experience": "Highlight experience in backend roles, focusing on APIs and system design.",
+      "certifications": "Optional certifications in backend or cloud technologies."
+    }
+  },
+  {
+    "job_title": "Frontend Developer",
+    "job_description": "We are hiring a Frontend Developer skilled in React to build responsive and user-friendly web applications. Experience with modern UI frameworks is required.",
+    "location": {
+      "city": "Hyderabad",
+      "country": "India"
+    },
+    "job_type": "Hybrid",
+    "employment_type": "Full-time",
+    "deadline": "2027-07-15",
+    "experience_required": "1-3 years",
+    "salary_range": "₹6-12 LPA",
+    "required_skills": ["React", "JavaScript", "Tailwind CSS", "HTML", "CSS"],
+    "resume_template": {
+      "about": "Highlight frontend expertise, UI/UX understanding, and experience with modern frameworks.",
+      "education": "Include relevant degree and academic details.",
+      "skills": "Focus on React, JavaScript, CSS frameworks, and UI design.",
+      "projects": "Showcase responsive web apps, dashboards, or UI-intensive projects.",
+      "experience": "Mention frontend roles, focusing on user experience and performance.",
+      "certifications": "Optional certifications in frontend development or UI/UX."
+    }
+  },
+  {
+    "job_title": "Data Science Intern",
+    "job_description": "Looking for a Data Science Intern with knowledge of machine learning, data analysis, and Python. The candidate should be familiar with data visualization tools.",
+    "location": {
+      "city": "Pune",
+      "country": "India"
+    },
+    "job_type": "Onsite",
+    "employment_type": "Internship",
+    "deadline": "2027-05-30",
+    "experience_required": "0-1 years",
+    "salary_range": "₹20,000/month",
+    "required_skills": ["Python", "Pandas", "Machine Learning", "Data Visualization"],
+    "resume_template": {
+      "about": "Focus on interest in data science, machine learning, and analytical thinking.",
+      "education": "Include current degree, specialization, and CGPA if strong.",
+      "skills": "Mention Python, ML libraries, data analysis, and visualization tools.",
+      "projects": "Include ML models, data analysis projects, or Kaggle work.",
+      "experience": "Mention internships or academic experience related to data science.",
+      "certifications": "List courses or certifications in ML, data science, or analytics."
+    }
+  }
+]

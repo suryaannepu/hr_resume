@@ -16,3 +16,4 @@ groq
 mediapipe
 google-auth
 requests
+reportlab

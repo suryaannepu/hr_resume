@@ -1,7 +1,7 @@
 """MongoDB models and operations"""
 from datetime import datetime
 from bson.objectid import ObjectId
-from database.connection import get_users_collection, get_jobs_collection, get_applications_collection, get_shortlisted_collection
+from database.connection import get_users_collection, get_jobs_collection, get_applications_collection, get_shortlisted_collection, get_saved_jobs_collection
 
 class JobModel:
     @staticmethod
@@ -39,6 +39,24 @@ class JobModel:
         }
         result = jobs.insert_one(job_data)
         return str(result.inserted_id)
+    
+    @staticmethod
+    def bulk_create_jobs(jobs_data):
+        """Bulk create jobs from parsed JSON"""
+        if not jobs_data:
+            return []
+        
+        jobs = get_jobs_collection()
+        for job in jobs_data:
+            if "created_at" not in job:
+                job["created_at"] = datetime.utcnow()
+            if "updated_at" not in job:
+                job["updated_at"] = datetime.utcnow()
+            if "status" not in job:
+                job["status"] = "active"
+                
+        result = jobs.insert_many(jobs_data)
+        return [str(idx) for idx in result.inserted_ids]
     
     @staticmethod
     def get_job(job_id):
@@ -319,3 +337,32 @@ class ShortlistModel:
                 {"$set": {"approved_by_recruiter": True, "approved_at": datetime.utcnow()}}
             )
         return True
+
+class SavedJobModel:
+    @staticmethod
+    def save_job(candidate_id, job_id):
+        col = get_saved_jobs_collection()
+        # avoid duplicates
+        existing = col.find_one({"candidate_id": candidate_id, "job_id": job_id})
+        if not existing:
+            col.insert_one({
+                "candidate_id": candidate_id,
+                "job_id": job_id,
+                "saved_at": datetime.utcnow()
+            })
+        return True
+
+    @staticmethod
+    def unsave_job(candidate_id, job_id):
+        col = get_saved_jobs_collection()
+        col.delete_one({"candidate_id": candidate_id, "job_id": job_id})
+        return True
+
+    @staticmethod
+    def get_saved_jobs(candidate_id):
+        col = get_saved_jobs_collection()
+        saved = list(col.find({"candidate_id": candidate_id}).sort("saved_at", -1))
+        for s in saved:
+            s["_id"] = str(s["_id"])
+        return saved
+

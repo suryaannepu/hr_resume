@@ -62,6 +62,13 @@ def create_indexes(db_instance):
         db_instance["jobs"].create_index("recruiter_id")
         db_instance["jobs"].create_index("status")
         db_instance["jobs"].create_index([("created_at", -1)])
+        db_instance["jobs"].create_index("location")
+        db_instance["jobs"].create_index("required_skills")
+        db_instance["jobs"].create_index("job_type")
+        
+        # Saved Jobs collection
+        db_instance["saved_jobs"].create_index("candidate_id")
+        db_instance["saved_jobs"].create_index("job_id")
         
         # Applications collection
         db_instance["applications"].create_index("job_id")
@@ -120,6 +127,12 @@ def get_shortlisted_collection():
     if db_instance is None:
         raise RuntimeError("Database connection not available")
     return db_instance["shortlisted_candidates"]
+
+def get_saved_jobs_collection():
+    db_instance = get_db()
+    if db_instance is None:
+        raise RuntimeError("Database connection not available")
+    return db_instance["saved_jobs"]
 
 def get_voice_sessions_collection():
     db_instance = get_db()

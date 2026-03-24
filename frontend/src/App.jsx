@@ -9,6 +9,7 @@ import { Register } from './pages/Register';
 import { RecruiterDashboard } from './pages/RecruiterDashboard';
 import { JobCandidates } from './pages/JobCandidates';
 import { PostJob } from './pages/PostJob';
+import { BulkJobUpload } from './pages/BulkJobUpload';
 import { JobsMarketplace } from './pages/JobsMarketplace';
 import { ApplyJob } from './pages/ApplyJob';
 import { CandidateDashboard } from './pages/CandidateDashboard';
@@ -111,6 +112,7 @@ function RecruiterLayout({ children }) {
   const navItems = [
     { path: '/recruiter-dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/post-job', label: 'Post Job', icon: Briefcase },
+    { path: '/bulk-upload', label: 'Bulk Upload', icon: User },
   ];
 
   const handleLogout = () => {
@@ -211,6 +213,16 @@ export default function App() {
             <PrivateRoute requiredRole="recruiter">
               <RecruiterLayout>
                 <PostJob />
+              </RecruiterLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/bulk-upload"
+          element={
+            <PrivateRoute requiredRole="recruiter">
+              <RecruiterLayout>
+                <BulkJobUpload />
               </RecruiterLayout>
             </PrivateRoute>
           }

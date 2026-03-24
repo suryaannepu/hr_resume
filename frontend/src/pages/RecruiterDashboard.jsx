@@ -10,7 +10,7 @@ import {
   ArrowRight, TrendingUp, CheckCircle, XCircle, FileText,
   ChevronRight, ChevronDown, Filter, Zap, LayoutDashboard,
   Activity, Target, MapPin, BrainCircuit, Loader2, AlertTriangle,
-  ChevronLeft, MessageSquare, Send, X, ExternalLink, Award
+  ChevronLeft, MessageSquare, Send, X, ExternalLink, Award, FileJson
 } from 'lucide-react';
 
 /* ─── Animated Counter ─── */
@@ -472,10 +472,16 @@ export const RecruiterDashboard = () => {
             </h1>
             <p className="text-slate-500 text-sm">Your hiring pipeline at a glance.</p>
           </div>
-          <Button variant="primary" onClick={() => navigate('/post-job')} icon={PlusCircle}
-            className="rounded-xl shadow-lg shadow-[#009688]/20 bg-gradient-to-r from-[#009688] to-[#00796b] hover:from-[#00796b] hover:to-[#004d40] border-none px-6 shrink-0">
-            Post New Job
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="secondary" onClick={() => navigate('/bulk-upload')} icon={FileJson}
+              className="rounded-xl border-[#009688]/30 text-[#009688] hover:bg-[#009688]/5 px-4">
+              Upload JSON
+            </Button>
+            <Button variant="primary" onClick={() => navigate('/post-job')} icon={PlusCircle}
+              className="rounded-xl shadow-lg shadow-[#009688]/20 bg-gradient-to-r from-[#009688] to-[#00796b] hover:from-[#00796b] hover:to-[#004d40] border-none px-6">
+              Post New Job
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
