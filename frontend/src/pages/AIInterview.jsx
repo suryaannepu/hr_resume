@@ -45,6 +45,9 @@ export const AIInterview = () => {
 
     const finalTranscriptRef = useRef('');
     const isProcessingFrameRef = useRef(false);
+    
+    // Track status synchronously for audio recursion halting
+    const statusRef = useRef(status);
 
     // Speakers for Panel
     const PANEL_MEMBERS = [
@@ -58,6 +61,7 @@ export const AIInterview = () => {
     // ── Initial Fetch ──
     useEffect(() => { checkStatus(); }, [applicationId]);
     useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [conversation]);
+    useEffect(() => { statusRef.current = status; }, [status]);
 
     // Ensure webcam attaches when video element mounts
     useEffect(() => {
@@ -204,6 +208,7 @@ export const AIInterview = () => {
                     setStatus('cheated');
                     stopRecording();
                     stopWebcam();
+                    stopAudio();
                     
                     // Post comprehensive cheat violation to backend with full evidence
                     try {
@@ -254,6 +259,7 @@ export const AIInterview = () => {
                 setStatus('cheated');
                 stopRecording();
                 stopWebcam();
+                stopAudio();
                 apiClient.post(`/interview/${applicationId}/cheat`, { 
                     screenshot, 
                     annotated_frame: screenshot,
@@ -420,6 +426,15 @@ export const AIInterview = () => {
         }
     };
 
+    const stopAudio = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current.src = "";
+            setIsAiSpeaking(false);
+        }
+    };
+
 
     // ── Actions ──
     const startInterview = async () => {
@@ -538,6 +553,11 @@ export const AIInterview = () => {
     };
 
     const playDialogues = (dialogues) => {
+        if (statusRef.current === 'cheated' || statusRef.current === 'completed') {
+            stopAudio();
+            return;
+        }
+
         if (!dialogues || dialogues.length === 0) {
             setInterviewStatus('Your turn! Speak now...');
             startRecording();

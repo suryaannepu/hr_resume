@@ -80,15 +80,32 @@ def start_interview(session_id: str) -> dict:
     q_text = first_q.get("question", "Tell me about yourself and your experience.")
     q_type = first_q.get("type", "Behavioral")
 
-    greeting = (
-        f"Hello {session['candidate_name']}! 👋 Welcome to your AI-powered interview for the "
-        f"**{session['job_title']}** position.\n\n"
-        f"I'll be asking you a series of questions to understand your background and skills. "
-        f"Take your time with each answer.\n\n"
-        f"**[{q_type}] Question:**\n{q_text}"
-    )
-    
-    dialogues = [{"speaker_index": 0, "message": greeting}]
+    intro_prompt = f"""You are a panel of 3 friendly, professional AI interviewers:
+0: Alex (Hiring Manager)
+1: Sarah (Technical Lead)
+2: David (Culture & Fit)
+
+You are starting a live AI interview with {session['candidate_name']} for the **{session['job_title']}** position.
+The very first question you need to ask is: '{q_text}' (Type: {q_type}).
+
+1. Warmly welcome the candidate and briefly introduce the panel members.
+2. Ask the first question naturally.
+3. Choose one or two of the panel members to speak in this intro.
+
+CRITICAL INSTRUCTION: You MUST separate the conversation into an array of distinct turns for each speaker! Return JSON ONLY.
+
+Expected JSON Schema:
+{{
+  "dialogues": [
+    {{ "speaker_index": 0, "message": "Hello {session['candidate_name']}! Welcome to your interview for the {session['job_title']} role. I'm Alex, the Hiring Manager, and joining me today are Sarah and David." }},
+    {{ "speaker_index": 1, "message": "Hi there! I'm Sarah. To kick things off, {q_text}" }}
+  ]
+}}
+"""
+    response_data = call_groq_llm("You are a professional AI hiring panel.", intro_prompt)
+    dialogues = response_data.get("dialogues", [])
+    if not dialogues:
+        dialogues = [{"speaker_index": 0, "message": f"Welcome {session['candidate_name']}! Let's get started. {q_text}"}]
 
     # Save to conversation
     sessions = _get_sessions_collection()
@@ -143,30 +160,34 @@ def process_candidate_response(session_id: str, candidate_answer: str) -> dict:
         # Ask next question (either from plan or generated)
         if next_idx < len(questions):
             next_q = questions[next_idx]
-            target_q = f"Ask this specific question from the plan: {next_q.get('question', '')} (Type: {next_q.get('type', 'Technical')})"
+            target_q = f"The required next topic is: '{next_q.get('question', '')}' (Focus: {next_q.get('type', 'Technical')}). Weave this seamlessly into the conversation."
         else:
-            target_q = "Generate a new, relevant follow-up question based on the candidate's previous answers or delve deeper into their technical/cultural skills."
+            target_q = "Generate a new, relevant follow-up question based entirely on the candidate's previous answers to delve deeper into their technical or cultural fit."
 
-        prompt = f"""You are a panel of 3 AI interviewers:
+        prompt = f"""You are a panel of 3 friendly, professional AI interviewers:
 0: Alex (Hiring Manager)
 1: Sarah (Technical Lead)
 2: David (Culture & Fit)
 
-The candidate just answered.
-1. Provide a brief, natural acknowledgment.
-2. {target_q}
-3. Choose ONE of the 3 panel members to act as the primary speaker for the next question. Make it conversational.
+The candidate just provided an answer. Your task is to respond naturally like a real-world interview panel.
 
-CRITICAL INSTRUCTION: You MUST separate the conversation into an array of distinct turns for each speaker! Do NOT merge multiple panel members' dialogue into a single string!
+1. EVALUATE: First, address their previous answer. Did they actually answer the question? Was it relevant?
+   - If it was a great, detailed answer, explicitly acknowledge a good specific point they made.
+   - If it was vague or off-topic, gently but directly ask them to clarify or provide a specific concrete example before fully moving on.
+2. CONVERSATIONAL TRANSITION: React naturally based on the chat history. Make it feel like a dynamic, continuous conversation, not a robotic script.
+3. NEXT QUESTION: {target_q}
+4. Choose ONE or TWO of the panel members to speak. Keep the dialogue engaging, polite, and realistic. Talk directly to the candidate using "you" and "your".
 
-Transcript context:
+CRITICAL INSTRUCTION: You MUST separate the conversation into an array of distinct turns for each speaker! Do NOT merge multiple panel members' dialogue into a single string! Return JSON ONLY.
+
+Transcript Context:
 {transcript}
 
-Return JSON ONLY.
+Expected JSON Schema:
 {{
   "dialogues": [
-    {{ "speaker_index": 0, "message": "Thanks for that answer. Sarah, would you like to take the next one?" }},
-    {{ "speaker_index": 1, "message": "Sure thing Alex! Candidate, what is your experience with..." }}
+    {{ "speaker_index": 0, "message": "That's a great example of handling a tight deadline, especially how you prioritized the API tasks. Sarah, do you want to dig into the technical side?" }},
+    {{ "speaker_index": 1, "message": "I'd love to! You mentioned using AWS. Can you explain how you designed the architecture for that high-traffic event?" }}
   ]
 }}
 """

@@ -46,11 +46,13 @@ class CheatingDetector:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print(f"🖥️ Using device: {self.device}")
 
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        yolo_dir = os.path.join(base_dir, "yolomodels")
+        
         # ── YOLO: Face & Person Detection ──
         try:
-            self.face_person_model = YOLO(
-                r"C:\Users\acer\Desktop\RESUME_AI\backend\yolomodels\yolov8x_person_face.pt"
-            )
+            face_path = os.path.join(yolo_dir, "yolov8x_person_face.pt")
+            self.face_person_model = YOLO(face_path)
             self.face_person_model.to(self.device)
             print("✓ Face-Person model loaded")
         except Exception as e:
@@ -59,9 +61,8 @@ class CheatingDetector:
 
         # ── YOLO: Mobile Phone Detection ──
         try:
-            self.phone_model = YOLO(
-                r"C:\Users\acer\Desktop\RESUME_AI\backend\yolomodels\best (2).pt"
-            )
+            phone_path = os.path.join(yolo_dir, "best (2).pt")
+            self.phone_model = YOLO(phone_path)
             self.phone_model.to(self.device)
             print("✓ Phone model loaded")
         except Exception as e:
@@ -94,7 +95,8 @@ class CheatingDetector:
         self.hand_missing_since = None      # timestamp when hands went missing
         self.hand_warning_active = False     # is a warning currently showing?
         self.hand_warning_count = 0          # total successive warnings given
-        self.hand_warning_timer_sec = 10     # seconds before each warning fires
+        self.hand_warning_timer_sec = 20     # seconds before each warning fires
+        self.max_warnings = 3
 
         self.consecutive_phone_frames = 0
         self.phone_detection_history = []
@@ -244,7 +246,7 @@ class CheatingDetector:
                     y2 = zy2 + hy1
                     conf = float(box.conf[0].item())
 
-                    if conf >= 0.50:
+                    if conf >= 0.35:
                         bw, bh = x2 - x1, y2 - y1
                         area = bw * bh
                         if 0.001 * (w * h) <= area <= 0.60 * (w * h):
@@ -279,8 +281,8 @@ class CheatingDetector:
                 self.hand_warning_active = True
 
         # Check warning state
-        if self.hand_warning_count >= 2:
-            flags.append("INTERVIEW TERMINATED – hands not visible (2 warnings)")
+        if self.hand_warning_count >= self.max_warnings:
+            flags.append(f"INTERVIEW TERMINATED – hands not visible ({self.max_warnings} warnings)")
             cv2.putText(frame, "INTERVIEW TERMINATED", (30, h // 2),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
         elif self.hand_warning_active and not hands_detected:
@@ -329,7 +331,7 @@ class CheatingDetector:
         # Face absence
         if face_detected:
             self.last_face_seen = current_time
-        elif (current_time - self.last_face_seen) > 3.0:
+        elif (current_time - self.last_face_seen) > 15.0:
             flags.append("Candidate left screen")
 
         # ── Encode annotated frame back to base64 for frontend ──
