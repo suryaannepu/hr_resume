@@ -43,7 +43,11 @@ def create_job(payload):
         description=data['description'],
         required_skills=data['required_skills'],
         deadline=deadline,
-        domain=domain
+        domain=domain,
+        location=data.get('location'),
+        job_type=data.get('job_type', 'Onsite'),
+        employment_type=data.get('employment_type', 'Full-time'),
+        resume_template=data.get('resume_template')
     )
     
     return jsonify({

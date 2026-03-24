@@ -469,26 +469,7 @@ export const BulkJobUpload = () => {
             </div>
           </div>
 
-          {/* JSON Format Reference */}
-          <div className="mt-6 bg-slate-800 rounded-xl p-4 text-left">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Expected JSON Format</p>
-            <pre className="text-xs text-emerald-400 font-mono overflow-x-auto leading-relaxed">{`[
-  {
-    "job_title": "Backend Engineer",
-    "job_description": "We are looking for...",
-    "location": { "city": "Bangalore", "country": "India" },
-    "job_type": "Remote",           // Remote / Hybrid / Onsite
-    "employment_type": "Full-time", // Full-time / Internship / Contract
-    "deadline": "2025-06-30",
-    "experience_required": "2+ years",
-    "salary_range": "₹8-15 LPA",
-    "required_skills": ["Python", "FastAPI"],
-    "resume_template": {            // optional
-      "about": "...", "projects": "..."
-    }
-  }
-]`}</pre>
-          </div>
+          {/* JSON Reference Removed */}
         </div>
       </div>
     );

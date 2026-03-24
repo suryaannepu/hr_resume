@@ -5,7 +5,7 @@ from database.connection import get_users_collection, get_jobs_collection, get_a
 
 class JobModel:
     @staticmethod
-    def create_job(recruiter_id, company_name, job_title, description, required_skills, deadline=None, domain="Other"):
+    def create_job(recruiter_id, company_name, job_title, description, required_skills, deadline=None, domain="Other", location=None, job_type="Onsite", employment_type="Full-time", resume_template=None):
         """Create a new job posting"""
         from utils.skill_extractor import extract_skills_from_text
         
@@ -33,6 +33,10 @@ class JobModel:
             "technical_requirements": description_skills['technical'],
             "soft_requirements": description_skills['soft'],
             "deadline": deadline,
+            "location": location or {"city": "", "country": ""},
+            "job_type": job_type,
+            "employment_type": employment_type,
+            "resume_template": resume_template or {},
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "status": "active"
