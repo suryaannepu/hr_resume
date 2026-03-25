@@ -109,8 +109,8 @@ const ATSChecker = () => {
         return (
             <>
                 <Navigation userRole="candidate" />
-                <div className="min-h-screen bg-white">
-                    <div className="border-b border-gray-200 bg-white">
+                <div className="min-h-screen bg-white dark:bg-slate-900">
+                    <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
                         <div className="max-w-6xl mx-auto px-6 py-8">
                             <Skeleton className="h-10 w-64 mb-2" />
                             <Skeleton className="h-4 w-96" />
@@ -149,12 +149,12 @@ const ATSChecker = () => {
     return (
         <>
             <Navigation userRole="candidate" />
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen bg-white dark:bg-slate-900">
                 {/* Header */}
-                <div className="border-b border-gray-200 bg-white">
+                <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900">
                     <div className="max-w-6xl mx-auto px-6 py-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Resume ATS Checker</h1>
-                        <p className="text-gray-600">Analyze your resume's compatibility with Applicant Tracking Systems</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Resume ATS Checker</h1>
+                        <p className="text-gray-600 dark:text-gray-300">Analyze your resume's compatibility with Applicant Tracking Systems</p>
                     </div>
                 </div>
 
@@ -165,8 +165,8 @@ const ATSChecker = () => {
                         <div className="lg:col-span-2 space-y-6">
                             {/* Upload Section */}
                             {!analysis && (
-                                <div className="border border-gray-200 rounded-lg p-8 bg-white">
-                                    <h2 className="text-xl font-semibold text-gray-900 mb-6">Upload Resume</h2>
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-8 bg-white dark:bg-slate-900">
+                                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Upload Resume</h2>
 
                                     {error && (
                                         <Alert
@@ -183,7 +183,7 @@ const ATSChecker = () => {
                                                 ? 'border-blue-500 bg-blue-50'
                                                 : resumeFile
                                                     ? 'border-green-300 bg-green-50'
-                                                    : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                                                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 bg-gray-50 dark:bg-slate-800'
                                         }`}
                                         onDragOver={(e) => {
                                             e.preventDefault();
@@ -205,18 +205,18 @@ const ATSChecker = () => {
                                         {resumeFile ? (
                                             <div>
                                                 <FileText size={48} className="mx-auto text-green-600 mb-3" />
-                                                <p className="text-gray-900 font-semibold text-lg mb-1">{resumeFile.name}</p>
-                                                <p className="text-gray-600 text-sm">
+                                                <p className="text-gray-900 dark:text-white font-semibold text-lg mb-1">{resumeFile.name}</p>
+                                                <p className="text-gray-600 dark:text-gray-300 text-sm">
                                                     {(resumeFile.size / 1024).toFixed(0)} KB
                                                 </p>
                                             </div>
                                         ) : (
                                             <div>
                                                 <Upload size={48} className="mx-auto text-gray-400 mb-3" />
-                                                <p className="text-gray-900 font-semibold mb-1">
+                                                <p className="text-gray-900 dark:text-white font-semibold mb-1">
                                                     Drag and drop your resume here
                                                 </p>
-                                                <p className="text-gray-600 text-sm">or click to browse (PDF only)</p>
+                                                <p className="text-gray-600 dark:text-gray-300 text-sm">or click to browse (PDF only)</p>
                                             </div>
                                         )}
                                     </div>
@@ -238,17 +238,17 @@ const ATSChecker = () => {
                             {analysis && (
                                 <div className="space-y-6">
                                     {/* ATS Score Card */}
-                                    <div className="border border-gray-200 rounded-lg p-8 bg-white">
+                                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-8 bg-white dark:bg-slate-900">
                                         <div className="flex items-end justify-between mb-6">
                                             <div>
-                                                <p className="text-gray-600 text-sm font-semibold mb-2">
+                                                <p className="text-gray-600 dark:text-gray-300 text-sm font-semibold mb-2">
                                                     ATS COMPATIBILITY SCORE
                                                 </p>
                                                 <div className="flex items-baseline gap-3">
-                                                    <span className="text-5xl font-bold text-gray-900">
+                                                    <span className="text-5xl font-bold text-gray-900 dark:text-white">
                                                         {analysis.ats_score}
                                                     </span>
-                                                    <span className="text-gray-600 text-lg">/100</span>
+                                                    <span className="text-gray-600 dark:text-gray-300 text-lg">/100</span>
                                                 </div>
                                             </div>
                                             <div>
@@ -269,7 +269,7 @@ const ATSChecker = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-gray-600">
+                                        <p className="text-gray-600 dark:text-gray-300">
                                             {analysis.ats_compatibility} compatibility with ATS systems
                                         </p>
                                     </div>
@@ -279,8 +279,8 @@ const ATSChecker = () => {
                                         {/* Strengths */}
                                         {analysis.analysis?.strengths &&
                                             analysis.analysis.strengths.length > 0 && (
-                                                <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                                                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-slate-900">
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                                         <Check size={20} className="text-green-600" />
                                                         Strengths
                                                     </h3>
@@ -290,7 +290,7 @@ const ATSChecker = () => {
                                                             .map((s, i) => (
                                                                 <li
                                                                     key={i}
-                                                                    className="flex items-start gap-2 text-sm text-gray-700"
+                                                                    className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200"
                                                                 >
                                                                     <span className="text-green-600 font-bold mt-0.5">
                                                                         •
@@ -305,8 +305,8 @@ const ATSChecker = () => {
                                         {/* Weaknesses */}
                                         {analysis.analysis?.weaknesses &&
                                             analysis.analysis.weaknesses.length > 0 && (
-                                                <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                                                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-slate-900">
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                                         <AlertTriangle size={20} className="text-orange-600" />
                                                         Areas to Improve
                                                     </h3>
@@ -316,7 +316,7 @@ const ATSChecker = () => {
                                                             .map((w, i) => (
                                                                 <li
                                                                     key={i}
-                                                                    className="flex items-start gap-2 text-sm text-gray-700"
+                                                                    className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200"
                                                                 >
                                                                     <span className="text-orange-600 font-bold mt-0.5">
                                                                         •
@@ -332,8 +332,8 @@ const ATSChecker = () => {
                                     {/* Improvements */}
                                     {analysis.improvements?.priority_fixes &&
                                         analysis.improvements.priority_fixes.length > 0 && (
-                                            <div className="border border-gray-200 rounded-lg p-6 bg-blue-50">
-                                                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-blue-50">
+                                                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                                     <Lightbulb size={20} className="text-blue-600" />
                                                     Recommended Actions
                                                 </h3>
@@ -341,7 +341,7 @@ const ATSChecker = () => {
                                                     {analysis.improvements.priority_fixes.map((rec, i) => (
                                                         <li
                                                             key={i}
-                                                            className="flex items-start gap-2 text-sm text-gray-700"
+                                                            className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200"
                                                         >
                                                             <span className="font-semibold text-blue-600 min-w-5 mt-0.5">
                                                                 {i + 1}.
@@ -355,9 +355,9 @@ const ATSChecker = () => {
 
                                     {/* Resume Sections */}
                                     {analysis.analysis?.section_completeness && (
-                                        <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                                            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                                <BookOpen size={20} className="text-gray-600" />
+                                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-slate-900">
+                                            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                                <BookOpen size={20} className="text-gray-600 dark:text-gray-300" />
                                                 Resume Sections
                                             </h3>
                                             <div className="grid grid-cols-2 gap-3">
@@ -369,7 +369,7 @@ const ATSChecker = () => {
                                                         className={`p-3 rounded flex items-center gap-2 text-sm ${
                                                             present
                                                                 ? 'bg-green-50 text-green-800'
-                                                                : 'bg-gray-100 text-gray-600'
+                                                                : 'bg-gray-100 text-gray-600 dark:text-gray-300'
                                                         }`}
                                                     >
                                                         {present ? (
@@ -390,9 +390,9 @@ const ATSChecker = () => {
 
                                     {/* Download Resume */}
                                     {cloudinaryUrl && (
-                                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-slate-800">
                                             <div className="flex items-center justify-between">
-                                                <p className="text-sm text-gray-700">
+                                                <p className="text-sm text-gray-700 dark:text-gray-200">
                                                     Resume stored securely in cloud
                                                 </p>
                                                 <Button
@@ -413,14 +413,14 @@ const ATSChecker = () => {
                         {/* Right Column - Sidebar */}
                         <div className="lg:col-span-1 space-y-6">
                             {/* History */}
-                            <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                    <Clock size={20} className="text-gray-600" />
+                            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-slate-900">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                    <Clock size={20} className="text-gray-600 dark:text-gray-300" />
                                     Analysis History
                                 </h3>
 
                                 {history.length === 0 ? (
-                                    <p className="text-sm text-gray-500 text-center py-6">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
                                         No analyses yet
                                     </p>
                                 ) : (
@@ -428,9 +428,9 @@ const ATSChecker = () => {
                                         {history.map((item) => (
                                             <div
                                                 key={item._id}
-                                                className="p-3 rounded text-sm bg-white hover:bg-gray-50 border border-gray-200 cursor-pointer"
+                                                className="p-3 rounded text-sm bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 cursor-pointer"
                                             >
-                                                <p className="font-medium text-gray-900 truncate mb-1">
+                                                <p className="font-medium text-gray-900 dark:text-white truncate mb-1">
                                                     {item.resume_filename}
                                                 </p>
                                                 <div className="flex items-center justify-between text-xs">
@@ -445,7 +445,7 @@ const ATSChecker = () => {
                                                     >
                                                         {item.ats_score}
                                                     </span>
-                                                    <span className="text-gray-500">
+                                                    <span className="text-gray-500 dark:text-gray-400">
                                                         {item.analyzed_at
                                                             ? new Date(item.analyzed_at).toLocaleDateString(
                                                                 'en-US',
@@ -465,12 +465,12 @@ const ATSChecker = () => {
                             </div>
 
                             {/* Applications Link */}
-                            <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Eye size={20} className="text-gray-600" />
+                            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-slate-900">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                    <Eye size={20} className="text-gray-600 dark:text-gray-300" />
                                     Applications
                                 </h3>
-                                <p className="text-sm text-gray-600 mb-4">
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                                     View resumes from your job applications
                                 </p>
                                 <Button

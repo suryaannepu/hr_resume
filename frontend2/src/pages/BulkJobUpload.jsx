@@ -16,7 +16,7 @@ const Toast = ({ toasts }) => (
       <div
         key={t.id}
         className={`px-4 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2 pointer-events-auto transition-all duration-300 ${
-          t.type === 'success' ? 'bg-emerald-600 text-white' :
+          t.type === 'success' ? 'bg-blue-600 text-white' :
           t.type === 'error' ? 'bg-rose-600 text-white' :
           'bg-slate-800 text-white'
         }`}
@@ -32,7 +32,7 @@ const Toast = ({ toasts }) => (
 /* ── Job Type Badge ── */
 const TypeBadge = ({ value, type }) => {
   const colors = {
-    Remote: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    Remote: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     Hybrid: 'bg-blue-50 text-blue-700 border-blue-200',
     Onsite: 'bg-slate-100 text-slate-700 border-slate-200',
     'Full-time': 'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -73,7 +73,7 @@ const EditJobModal = ({ job, index, onSave, onClose }) => {
     onClose();
   };
 
-  const inputCls = "w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#009688] focus:ring-2 focus:ring-[#009688]/10";
+  const inputCls = "w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10";
   const labelCls = "block text-xs font-semibold text-slate-600 mb-1";
 
   return (
@@ -82,8 +82,8 @@ const EditJobModal = ({ job, index, onSave, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#009688]/10 flex items-center justify-center">
-              <Edit2 size={16} className="text-[#009688]" />
+            <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center">
+              <Edit2 size={16} className="text-blue-600" />
             </div>
             <h3 className="font-bold text-slate-800">Edit Job #{index + 1}</h3>
           </div>
@@ -151,7 +151,7 @@ const EditJobModal = ({ job, index, onSave, onClose }) => {
         {/* Footer */}
         <div className="flex gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50">
           <button onClick={onClose} className="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-white transition-colors">Cancel</button>
-          <button onClick={handleSave} className="flex-1 px-4 py-2 rounded-xl bg-[#009688] text-white text-sm font-bold hover:bg-[#00796b] transition-colors">Save Changes</button>
+          <button onClick={handleSave} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-indigo-600 transition-colors">Save Changes</button>
         </div>
       </div>
     </div>
@@ -163,23 +163,23 @@ const JobPreviewCard = ({ job, index, selected, onToggle, onEdit, onDelete, post
   const [expanded, setExpanded] = useState(false);
 
   const statusColors = {
-    success: 'bg-emerald-50 border-emerald-200',
+    success: 'bg-blue-50 border-blue-200',
     failed: 'bg-rose-50 border-rose-200',
     posting: 'bg-blue-50 border-blue-200',
   };
 
   return (
     <div className={`rounded-xl border overflow-hidden transition-all ${
-      postStatus?.status === 'success' ? 'border-emerald-200 bg-emerald-50/30' :
+      postStatus?.status === 'success' ? 'border-blue-200 bg-blue-50/30' :
       postStatus?.status === 'failed' ? 'border-rose-200 bg-rose-50/30' :
-      selected ? 'border-[#009688]/40 bg-[#009688]/5' : 'border-slate-200 bg-white'
+      selected ? 'border-blue-600/40 bg-blue-600/5' : 'border-slate-200 bg-white'
     }`} style={{ animation: `fadeIn 0.3s ease-out ${index * 30}ms both` }}>
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Checkbox */}
         <button
           onClick={() => onToggle(index)}
           className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-            selected ? 'bg-[#009688] border-[#009688]' : 'border-slate-300 hover:border-[#009688]'
+            selected ? 'bg-blue-600 border-blue-600' : 'border-slate-300 hover:border-blue-600'
           }`}
         >
           {selected && <CheckCircle size={12} className="text-white" />}
@@ -194,7 +194,7 @@ const JobPreviewCard = ({ job, index, selected, onToggle, onEdit, onDelete, post
                 <AlertTriangle size={9} /> Possible Duplicate
               </span>
             )}
-            {postStatus?.status === 'success' && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-0.5"><CheckCircle size={9} /> Posted</span>}
+            {postStatus?.status === 'success' && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-0.5"><CheckCircle size={9} /> Posted</span>}
             {postStatus?.status === 'failed' && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-0.5"><XCircle size={9} /> Failed</span>}
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -279,7 +279,7 @@ const JobPreviewCard = ({ job, index, selected, onToggle, onEdit, onDelete, post
             </p>
           )}
           {job.resume_template && (
-            <div className="mt-2 px-2 py-1 bg-[#009688]/5 border border-[#009688]/20 rounded-lg text-[10px] text-[#009688] font-medium">
+            <div className="mt-2 px-2 py-1 bg-blue-600/5 border border-blue-600/20 rounded-lg text-[10px] text-blue-600 font-medium">
               ✓ Resume template included
             </div>
           )}
@@ -427,7 +427,7 @@ export const BulkJobUpload = () => {
         <div className="max-w-2xl w-full">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#009688] to-[#00796b] flex items-center justify-center mx-auto mb-4 shadow-xl shadow-[#009688]/30">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-600/30">
               <FileJson size={32} className="text-white" />
             </div>
             <h1 className="text-3xl font-black text-slate-900 mb-2">Bulk Job Upload</h1>
@@ -443,8 +443,8 @@ export const BulkJobUpload = () => {
             onClick={() => fileInputRef.current?.click()}
             className={`group relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 ${
               isDragging
-                ? 'border-[#009688] bg-[#009688]/5 scale-[1.01]'
-                : 'border-slate-200 hover:border-[#009688]/50 hover:bg-slate-50'
+                ? 'border-blue-600 bg-blue-600/5 scale-[1.01]'
+                : 'border-slate-200 hover:border-blue-600/50 hover:bg-slate-50'
             }`}
           >
             <input
@@ -455,7 +455,7 @@ export const BulkJobUpload = () => {
               onChange={handleFileSelect}
             />
             <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-all ${
-              isDragging ? 'bg-[#009688] text-white scale-110' : 'bg-slate-100 text-slate-400 group-hover:bg-[#009688]/10 group-hover:text-[#009688]'
+              isDragging ? 'bg-blue-600 text-white scale-110' : 'bg-slate-100 text-slate-400 group-hover:bg-blue-600/10 group-hover:text-blue-600'
             }`}>
               {parsing ? <Loader2 size={36} className="animate-spin" /> : <Upload size={36} />}
             </div>
@@ -464,12 +464,12 @@ export const BulkJobUpload = () => {
             </h3>
             <p className="text-slate-400 text-sm mb-4">or click to browse — accepts .json files up to 500 jobs</p>
             <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <Zap size={12} className="text-[#009688]" />
+              <Zap size={12} className="text-blue-600" />
               <span>AI will auto-extract skills • Normalize job types • Detect duplicates</span>
             </div>
           </div>
 
-          {/* JSON Reference Removed */}
+
         </div>
       </div>
     );
@@ -483,8 +483,8 @@ export const BulkJobUpload = () => {
       <div className="max-w-2xl mx-auto py-12 px-4">
         <Toast toasts={toasts} />
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={40} className="text-emerald-600" />
+          <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={40} className="text-blue-600" />
           </div>
           <h2 className="text-2xl font-black text-slate-900 mb-2">Upload Complete!</h2>
           <p className="text-slate-500">{successCount} posted · {failCount} failed</p>
@@ -493,10 +493,10 @@ export const BulkJobUpload = () => {
         <div className="space-y-2 mb-8">
           {postResults.map((r, i) => (
             <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${
-              r.status === 'success' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
+              r.status === 'success' ? 'bg-blue-50 border-blue-200' : 'bg-rose-50 border-rose-200'
             }`}>
               {r.status === 'success'
-                ? <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                ? <CheckCircle size={16} className="text-blue-600 shrink-0" />
                 : <XCircle size={16} className="text-rose-500 shrink-0" />}
               <span className="text-sm font-medium text-slate-800 flex-1 truncate">{r.job_title}</span>
               {r.status === 'failed' && <span className="text-xs text-rose-600">{r.error}</span>}
@@ -513,7 +513,7 @@ export const BulkJobUpload = () => {
           </button>
           <button
             onClick={() => navigate('/recruiter-dashboard')}
-            className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-[#009688] to-[#00796b] text-white font-bold hover:opacity-90 transition-opacity shadow-lg shadow-[#009688]/20"
+            className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:opacity-90 transition-opacity shadow-lg shadow-blue-600/20"
           >
             Go to Dashboard
           </button>
@@ -553,7 +553,7 @@ export const BulkJobUpload = () => {
           <button
             disabled={posting}
             onClick={() => handlePost(false)}
-            className="px-4 py-2.5 rounded-xl bg-[#009688] text-white text-sm font-bold hover:bg-[#00796b] transition-colors disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-[#009688]/20"
+            className="px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-indigo-600 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-blue-600/20"
           >
             {posting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
             Post Selected ({selected.size})
@@ -561,7 +561,7 @@ export const BulkJobUpload = () => {
           <button
             disabled={posting}
             onClick={() => handlePost(true)}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#009688] to-[#00796b] text-white text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-[#009688]/20"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-blue-600/20"
           >
             {posting ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
             Post All ({jobs.length})
@@ -572,8 +572,8 @@ export const BulkJobUpload = () => {
       {/* Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total Parsed', value: jobs.length, icon: FileJson, color: 'text-[#009688] bg-[#009688]/10' },
-          { label: 'Selected', value: selected.size, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50' },
+          { label: 'Total Parsed', value: jobs.length, icon: FileJson, color: 'text-blue-600 bg-blue-600/10' },
+          { label: 'Selected', value: selected.size, icon: CheckCircle, color: 'text-blue-600 bg-blue-50' },
           { label: 'Warnings', value: warnings.length, icon: AlertTriangle, color: 'text-amber-600 bg-amber-50' },
           { label: 'Possible Dups', value: duplicates.length, icon: Info, color: 'text-rose-500 bg-rose-50' },
         ].map(s => (
@@ -612,7 +612,7 @@ export const BulkJobUpload = () => {
             placeholder="Filter jobs..."
             value={searchFilter}
             onChange={e => setSearchFilter(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#009688]"
+            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-600"
           />
           <Eye size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         </div>
@@ -653,14 +653,14 @@ export const BulkJobUpload = () => {
           <button
             disabled={posting || selected.size === 0}
             onClick={() => handlePost(false)}
-            className="px-5 py-2.5 rounded-xl border border-[#009688] text-[#009688] text-sm font-bold hover:bg-[#009688]/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl border border-blue-600 text-blue-600 text-sm font-bold hover:bg-blue-600/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Send size={14} /> Post Selected ({selected.size})
           </button>
           <button
             disabled={posting}
             onClick={() => handlePost(true)}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#009688] to-[#00796b] text-white text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-[#009688]/20"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-blue-600/20"
           >
             {posting ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
             Post All ({jobs.length})
