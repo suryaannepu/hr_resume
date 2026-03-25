@@ -17,3 +17,7 @@ mediapipe
 google-auth
 requests
 reportlab
+selenium
+beautifulsoup4
+webdriver-manager
+lxml

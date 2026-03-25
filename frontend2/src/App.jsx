@@ -11,6 +11,7 @@ import { RecruiterDashboard } from './pages/RecruiterDashboard';
 import { JobCandidates } from './pages/JobCandidates';
 import { PostJob } from './pages/PostJob';
 import { BulkJobUpload } from './pages/BulkJobUpload';
+import { ScrapeCareerPages } from './pages/ScrapeCareerPages';
 import { JobsMarketplace } from './pages/JobsMarketplace';
 import { ApplyJob } from './pages/ApplyJob';
 import { CandidateDashboard } from './pages/CandidateDashboard';
@@ -18,7 +19,7 @@ import { AIInterview } from './pages/AIInterview';
 import { VoiceInterview } from './pages/VoiceInterview';
 import ATSChecker from './pages/ATSChecker';
 import { DashboardSidebar, DashboardTopNav } from './components/Common';
-import { LayoutDashboard, Briefcase, User } from 'lucide-react';
+import { LayoutDashboard, Briefcase, User, Globe } from 'lucide-react';
 import apiClient from './utils/api';
 
 // Styles
@@ -125,6 +126,7 @@ function RecruiterLayout({ children }) {
     { path: '/recruiter-dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/post-job', label: 'Post Job', icon: Briefcase },
     { path: '/bulk-upload', label: 'Bulk Upload', icon: User },
+    { path: '/scrape-careers', label: 'Scrape Career Pages', icon: Globe },
   ];
 
   const handleLogout = () => {
@@ -248,6 +250,16 @@ export default function App() {
                 <PrivateRoute requiredRole="recruiter">
                   <RecruiterLayout>
                     <BulkJobUpload />
+                  </RecruiterLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/scrape-careers"
+              element={
+                <PrivateRoute requiredRole="recruiter">
+                  <RecruiterLayout>
+                    <ScrapeCareerPages />
                   </RecruiterLayout>
                 </PrivateRoute>
               }
